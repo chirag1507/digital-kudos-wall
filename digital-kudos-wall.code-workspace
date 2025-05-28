@@ -1,11 +1,17 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "../digital-kudos-wall-system-tests"
-		}
-	],
-	"settings": {}
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../digital-kudos-wall-system-tests"
+    },
+    {
+      "path": "../digital-kudos-wall-frontend"
+    },
+    {
+      "path": "../digital-kudos-wall-backend"
+    }
+  ],
+  "settings": {}
 }
