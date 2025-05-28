@@ -126,7 +126,57 @@ _Architecture diagram to be added_
 - Hot reloading for rapid feedback cycles
 - Future consideration for cloud deployment (AWS)
 
-## 13. Component Repositories
+## 13. CI/CD Pipeline
+
+**Pipeline Architecture** - Following TDD-supporting pipeline design:
+
+**Pipeline Tool:** GitHub Actions
+**Container Registry:** GitHub Container Registry
+**Docker Strategy:** Containerized deployments for all components
+
+**Pipeline Stages:**
+
+1. **Commit Stage** - Component-level testing and Docker image creation
+
+   - Checkout code
+   - Compile code
+   - Run unit tests
+   - Run component tests
+   - Run contract verification tests
+   - Run linting and static code analysis
+   - Build Docker image
+   - Publish Docker image to registry
+
+2. **Acceptance Stage** - System-level functional testing
+
+   - Deploy to acceptance environment
+   - Run smoke tests
+   - Run acceptance tests
+   - Run E2E tests
+
+3. **UAT Stage** - Manual testing environment
+
+   - Deploy to UAT environment
+   - Run smoke tests
+   - Manual QA testing
+
+4. **Staging Stage** - Pre-production validation
+
+   - Deploy to staging environment
+   - Run smoke tests
+
+5. **Production Stage** - Live deployment
+   - Deploy to production environment
+   - Run smoke tests
+
+**Component Pipeline Strategy:**
+
+- Each repository (Frontend, Backend, System Tests) has independent commit stages
+- Commit stages run in parallel for faster feedback
+- Pipeline dashboard provides visibility across all components
+- Focus on fast feedback loops and small batch sizes
+
+## 14. Component Repositories
 
 **Links to Component Repositories:**
 
@@ -134,7 +184,7 @@ _Architecture diagram to be added_
 - [Backend Repository](https://github.com/chirag1507/digital-kudos-wall-backend) - Node.js API server
 - [System Tests Repository](https://github.com/chirag1507/digital-kudos-wall-system-tests) - Smoke, Acceptance and E2E tests
 
-## 14. Project Management
+## 15. Project Management
 
 **Project Board:** GitHub Projects for ticket management and user story tracking
 
@@ -145,7 +195,7 @@ _Architecture diagram to be added_
 - Task lists for frontend and backend work
 - Multiple assignees per ticket when needed
 
-## 15. Development Approach
+## 16. Development Approach
 
 This project follows:
 
