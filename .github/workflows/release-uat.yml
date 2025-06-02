@@ -53,16 +53,32 @@ jobs:
             export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
             export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
 
-            echo "Frontend Image: $FRONTEND_IMAGE_URI_WITH_TAG"
-            echo "Backend Image: $BACKEND_IMAGE_URI_WITH_TAG"
+            echo "VERIFYING ENVIRONMENT VARIABLES ON EC2:"
+            echo "Frontend Image ENV VAR: $FRONTEND_IMAGE_URI_WITH_TAG"
+            echo "Backend Image ENV VAR: $BACKEND_IMAGE_URI_WITH_TAG"
 
             cd /opt/digital-kudos-wall
+
+            echo "VERIFYING DOCKER-COMPOSE.YML on EC2:"
+            cat docker-compose.yml
+
+            echo "VERIFYING RESOLVED DOCKER-COMPOSE CONFIG ON EC2:"
+            sudo docker-compose config
+
+            echo "Stopping existing services (if any)..."
+            sudo docker-compose down || echo "No services were running or error during down, proceeding."
 
             echo "Running docker-compose pull..."
             sudo docker-compose pull
 
             echo "Running docker-compose up -d --force-recreate..."
             sudo docker-compose up -d --force-recreate frontend backend
+
+            echo "Listing running containers..."
+            sudo docker ps -a
+
+            echo "Checking frontend container logs (last 20 lines)..."
+            sudo docker logs digital-kudos-wall-frontend-1 --tail 20 || echo "Could not get frontend logs."
 
             echo "Deployment script finished."
 
