@@ -96,12 +96,12 @@ jobs:
       - name: Run Smoke Tests
         working-directory: ./digital-kudos-wall-system-tests
         env:
-          PLAYWRIGHT_TEST_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Correct env var for Playwright
+          CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Custom env var for Playwright config
           # APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
           CI: true
         run: |
           echo "Running smoke tests against UAT..."
-          echo "Target Frontend URL (from PLAYWRIGHT_TEST_BASE_URL): $PLAYWRIGHT_TEST_BASE_URL"
+          echo "Target Frontend URL (from CI_BASE_URL): $CI_BASE_URL"
           npm run test:smoke
 
   run_acceptance_tests:
@@ -133,10 +133,10 @@ jobs:
       - name: Run Acceptance Tests
         working-directory: ./digital-kudos-wall-system-tests
         env:
-          PLAYWRIGHT_TEST_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Correct env var for Playwright
+          CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Custom env var for Playwright config
           # APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
           CI: true
         run: |
           echo "Running acceptance tests against UAT..."
-          echo "Target Frontend URL (from PLAYWRIGHT_TEST_BASE_URL): $PLAYWRIGHT_TEST_BASE_URL"
+          echo "Target Frontend URL (from CI_BASE_URL): $CI_BASE_URL"
           npm run test:acceptance # Ensure this script exists in your system tests package.json
