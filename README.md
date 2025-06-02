@@ -119,62 +119,87 @@ _Architecture diagram to be added_
 
 ## 12. Deployment Model
 
-**Local Development** - Initial focus on local development environment:
+**Initial Setup:**
 
-- Docker containers for consistent development environment
-- Local database setup
-- Hot reloading for rapid feedback cycles
-- Future consideration for cloud deployment (AWS)
+- **Local Development:** Docker containers for a consistent development environment, local database setup, and hot reloading for rapid feedback.
+- **UAT Environment (AWS):** The system is deployed to a User Acceptance Testing (UAT) environment on AWS.
+  - **Infrastructure:** Managed by Terraform, consisting of a single EC2 instance running Docker.
+  - **Services:** Frontend and Backend applications are run as Docker containers, orchestrated by Docker Compose on the EC2 instance.
+  - **Database:** SQLite is used, with data stored on the EC2 instance's local storage.
+  - **Deployment:** Automated via GitHub Actions, which triggers Terraform to apply infrastructure changes and update services.
 
 ## 13. CI/CD Pipeline
 
-**Pipeline Architecture** - Following TDD-supporting pipeline design:
+**Pipeline Architecture:** Following a TDD-supporting pipeline design, focusing on fast feedback and reliable deployments.
 
 **Pipeline Tool:** GitHub Actions
 **Container Registry:** GitHub Container Registry
-**Docker Strategy:** Containerized deployments for all components
+**Deployment Mechanism:** Terraform (for infrastructure and service updates on EC2)
+**Docker Strategy:** Containerized deployments for all components.
+
+![Overall CI/CD Pipeline](./docs/images/ci-cd-pipeline.png "Overall CI/CD Pipeline")
 
 **Pipeline Stages:**
 
-1. **Commit Stage** - Component-level testing and Docker image creation
+The goal is to implement the following stages:
 
-   - Checkout code
-   - Compile code
-   - Run unit tests
-   - Run component tests
-   - Run contract verification tests
-   - Run linting and static code analysis
-   - Build Docker image
-   - Publish Docker image to registry
+1.  **Commit Stage (Per Component: Frontend, Backend)**
 
-2. **Acceptance Stage** - System-level functional testing
+    - Runs on every push to feature branches and main branch.
+    - Checkout code.
+    - Compile code (if applicable).
+    - Run unit tests.
+    - Run component tests.
+    - Run contract verification tests (e.g., Pact).
+    - Perform linting and static code analysis.
+    - Build Docker image.
+    - Push Docker image to GitHub Container Registry (tagged with commit hash or version).
 
-   - Deploy to acceptance environment
-   - Run smoke tests
-   - Run acceptance tests
-   - Run E2E tests
+    ![Commit Stage Diagram](./docs/images/commit-stage.png "Commit Stage Diagram")
 
-3. **UAT Stage** - Manual testing environment
+    ![Component Commit Stage Diagram](./docs/images/component-commit-stage.png "Component Commit Stage Diagram")
 
-   - Deploy to UAT environment
-   - Run smoke tests
-   - Manual QA testing
+2.  **Release Stage (Integrated System to UAT)**
 
-4. **Staging Stage** - Pre-production validation
+    - Triggered automatically after all relevant component commit stages pass (e.g., on merge to main for frontend or backend).
+    - Or, can be triggered manually for specific branches/versions.
+    - **Deploy to UAT Environment (Release to UAT):**
+      - GitHub Actions workflow retrieves the latest (or specified) Docker image URIs for frontend and backend.
+      - Triggers `terraform apply` in the `digital-kudos-wall-infrastructure` repository, passing the image URIs to update the EC2 instance's Docker Compose configuration via `user_data.sh`.
+    - Run smoke tests against the UAT environment.
+    - Run automated acceptance tests (e.g., end-to-end tests using the system-tests repository) against the UAT environment. (Note: Currently, acceptance tests are run on the UAT environment. A separate, dedicated acceptance environment/stage is a future consideration.)
 
-   - Deploy to staging environment
-   - Run smoke tests
+    ![Release Stage Diagram](./docs/images/release-stage.png "Release Stage Diagram (Deploy to UAT)")
 
-5. **Production Stage** - Live deployment
-   - Deploy to production environment
-   - Run smoke tests
+    ![Acceptance Testing](./docs/images/acceptance-stage.png "Acceptance Testing on UAT")
+
+3.  **UAT Stage (Manual Verification)**
+
+    - The UAT environment, once deployed (as per the Acceptance Stage), is available for manual QA testing and stakeholder review.
+    - Smoke tests ensure basic functionality post-deployment.
+
+    ![UAT Stage](./docs/images/uat-stage.png "UAT Stage")
+
+4.  **Staging Stage (Future - Pre-production Validation)**
+
+    - Deploy to a staging environment (mimicking production).
+    - Run smoke tests and potentially other checks (performance, final soak tests).
+
+5.  **Production Stage (Future - Live Deployment)**
+
+    - Deploy to the production environment.
+    - Run smoke tests.
+    - Monitor closely.
+
+    ![Production Stage](./docs/images/production-stage.png "Production Stage")
 
 **Component Pipeline Strategy:**
 
-- Each repository (Frontend, Backend, System Tests) has independent commit stages
-- Commit stages run in parallel for faster feedback
-- Pipeline dashboard provides visibility across all components
-- Focus on fast feedback loops and small batch sizes
+- Each application repository (Frontend, Backend) will have its own GitHub Actions workflow for the Commit Stage.
+- The `digital-kudos-wall-infrastructure` repository will have a GitHub Actions workflow for deploying to UAT (and later, other environments).
+- System tests in `digital-kudos-wall-system-tests` will be triggered as part of the Acceptance Stage.
+- Focus is on fast feedback loops and ensuring each component is releasable independently.
+- Visibility into pipeline status will be provided through GitHub Actions' UI. (Further dashboarding can be discussed based on clarification).
 
 ## 14. Component Repositories
 
