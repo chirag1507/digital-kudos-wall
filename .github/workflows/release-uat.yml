@@ -80,7 +80,7 @@ jobs:
           path: digital-kudos-wall-system-tests
           # token: ${{ secrets.PAT_FOR_SYSTEM_TESTS_REPO }} # If the system tests repo is private and in a different org, or needs special access
 
-      - name: Setup Node.js (Example - if your tests use Node.js)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18" # Or your desired version
@@ -96,12 +96,47 @@ jobs:
       - name: Run Smoke Tests
         working-directory: ./digital-kudos-wall-system-tests
         env:
-          # Pass the UAT URLs to your tests. Adjust env var names as needed by your test suite.
-          APP_FRONTEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3000
-          APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001
+          PLAYWRIGHT_TEST_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Correct env var for Playwright
+          # APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
           CI: true
         run: |
           echo "Running smoke tests against UAT..."
-          echo "Frontend URL: $APP_FRONTEND_URL"
-          echo "Backend URL: $APP_BACKEND_URL"
-          npm run test:smoke # Ensure this script exists in your system tests package.json
+          echo "Target Frontend URL (from PLAYWRIGHT_TEST_BASE_URL): $PLAYWRIGHT_TEST_BASE_URL"
+          npm run test:smoke
+
+  run_acceptance_tests:
+    name: Run Acceptance Tests on UAT
+    runs-on: ubuntu-latest
+    needs: deploy_to_uat # This job runs only if deploy_to_uat succeeds
+    if: always() # Or success() if you only want to run on successful deployment
+
+    steps:
+      - name: Checkout System Tests Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/digital-kudos-wall-system-tests
+          path: digital-kudos-wall-system-tests
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Playwright Browsers
+        working-directory: ./digital-kudos-wall-system-tests
+        run: npx playwright install --with-deps
+
+      - name: Install System Test Dependencies
+        working-directory: ./digital-kudos-wall-system-tests
+        run: npm ci
+
+      - name: Run Acceptance Tests
+        working-directory: ./digital-kudos-wall-system-tests
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Correct env var for Playwright
+          # APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
+          CI: true
+        run: |
+          echo "Running acceptance tests against UAT..."
+          echo "Target Frontend URL (from PLAYWRIGHT_TEST_BASE_URL): $PLAYWRIGHT_TEST_BASE_URL"
+          npm run test:acceptance # Ensure this script exists in your system tests package.json
