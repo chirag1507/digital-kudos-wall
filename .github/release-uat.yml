@@ -1,0 +1,107 @@
+name: Release to UAT
+
+on:
+  workflow_dispatch: # Allows manual triggering
+    inputs:
+      frontend_image_tag:
+        description: "Frontend Docker image tag (e.g., latest, v1.0.0, or commit SHA)"
+        required: true
+        default: "latest"
+      backend_image_tag:
+        description: "Backend Docker image tag (e.g., latest, v1.0.0, or commit SHA)"
+        required: true
+        default: "latest"
+      # Optional: Full image URIs if your registry/naming changes
+      # frontend_image_uri:
+      #   description: 'Full Frontend Docker image URI (e.g., ghcr.io/youruser/frontend)'
+      #   required: false
+      # backend_image_uri:
+      #   description: 'Full Backend Docker image URI (e.g., ghcr.io/youruser/backend)'
+      #   required: false
+
+jobs:
+  deploy_to_uat:
+    name: Deploy to UAT Environment
+    runs-on: ubuntu-latest
+    environment: uat # Optional: Define a GitHub environment for UAT for protection rules, etc.
+
+    steps:
+      - name: Checkout code (optional, for context)
+        uses: actions/checkout@v4
+
+      - name: Set Image URIs with Tags
+        id: image_uris
+        run: |
+          frontend_uri_base=${{ github.event.inputs.frontend_image_uri || 'ghcr.io/chirag1507/digital-kudos-wall-frontend' }}
+          backend_uri_base=${{ github.event.inputs.backend_image_uri || 'ghcr.io/chirag1507/digital-kudos-wall-backend' }}
+
+          echo "FRONTEND_IMG=${frontend_uri_base}:${{ github.event.inputs.frontend_image_tag }}" >> $GITHUB_ENV
+          echo "BACKEND_IMG=${backend_uri_base}:${{ github.event.inputs.backend_image_tag }}" >> $GITHUB_ENV
+
+          echo "Deploying Frontend: ${frontend_uri_base}:${{ github.event.inputs.frontend_image_tag }}"
+          echo "Deploying Backend: ${backend_uri_base}:${{ github.event.inputs.backend_image_tag }}"
+
+      - name: Deploy to UAT EC2 via SSH
+        uses: appleboy/ssh-action@master # Or use v1.0.0 or a specific SHA for stability
+        with:
+          host: ${{ secrets.UAT_SSH_HOST }}
+          username: ${{ secrets.UAT_SSH_USER }}
+          key: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "Deploying to UAT..."
+            export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
+            export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
+
+            echo "Frontend Image: $FRONTEND_IMAGE_URI_WITH_TAG"
+            echo "Backend Image: $BACKEND_IMAGE_URI_WITH_TAG"
+
+            cd /opt/digital-kudos-wall
+
+            echo "Running docker-compose pull..."
+            sudo docker-compose pull
+
+            echo "Running docker-compose up -d --force-recreate..."
+            sudo docker-compose up -d --force-recreate frontend backend
+
+            echo "Deployment script finished."
+
+  run_smoke_tests:
+    name: Run Smoke Tests on UAT
+    runs-on: ubuntu-latest
+    needs: deploy_to_uat # This job runs only if deploy_to_uat succeeds
+    if: always() # Or success() if you only want to run on successful deployment
+
+    steps:
+      - name: Checkout System Tests Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/digital-kudos-wall-system-tests # Assumes it's under the same owner
+          path: digital-kudos-wall-system-tests
+          # token: ${{ secrets.PAT_FOR_SYSTEM_TESTS_REPO }} # If the system tests repo is private and in a different org, or needs special access
+
+      - name: Setup Node.js (Example - if your tests use Node.js)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18" # Or your desired version
+
+      - name: Install Playwright Browsers
+        working-directory: ./digital-kudos-wall-system-tests
+        run: npx playwright install --with-deps
+
+      - name: Install System Test Dependencies
+        working-directory: ./digital-kudos-wall-system-tests
+        run: npm ci
+
+      - name: Run Smoke Tests
+        working-directory: ./digital-kudos-wall-system-tests
+        env:
+          # Pass the UAT URLs to your tests. Adjust env var names as needed by your test suite.
+          APP_FRONTEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3000
+          APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001
+          CI: true
+        run: |
+          echo "Running smoke tests against UAT..."
+          echo "Frontend URL: $APP_FRONTEND_URL"
+          echo "Backend URL: $APP_BACKEND_URL"
+          npm run test:smoke # Ensure this script exists in your system tests package.json

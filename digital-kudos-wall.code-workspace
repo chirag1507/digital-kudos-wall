@@ -11,6 +11,9 @@
     },
     {
       "path": "../digital-kudos-wall-backend"
+    },
+    {
+      "path": "../digital-kudos-wall-infrastructure"
     }
   ],
   "settings": {}
