@@ -122,6 +122,22 @@ _Architecture diagram to be added_
 **Initial Setup:**
 
 - **Local Development:** Docker containers for a consistent development environment, local database setup, and hot reloading for rapid feedback.
+
+  - **Running System-Level Tests Locally (Acceptance Stage on Docker Compose):**
+    To run smoke and acceptance tests locally against containerized services, the `digital-kudos-wall-system-tests` repository provides a Docker Compose setup. This allows for testing the integrated system in an environment that closely mimics CI/CD stages.
+
+    ![Acceptance Stage on Docker Compose](./docs/images/acceptance-stage-docker-compose.png "Acceptance Stage on Docker Compose")
+
+    **Steps:**
+
+    1. Navigate to the `digital-kudos-wall-system-tests` directory.
+    2. Ensure you have the latest service images: `docker compose pull frontend backend`
+    3. Start services: `docker compose up -d --remove-orphans`
+    4. Run tests:
+       - Smoke tests: `npm run test:smoke`
+       - Acceptance tests: `npm run test:acceptance`
+    5. Stop services: `docker compose down`
+
 - **UAT Environment (AWS):** The system is deployed to a User Acceptance Testing (UAT) environment on AWS.
   - **Infrastructure:** Managed by Terraform, consisting of a single EC2 instance running Docker.
   - **Services:** Frontend and Backend applications are run as Docker containers, orchestrated by Docker Compose on the EC2 instance.
