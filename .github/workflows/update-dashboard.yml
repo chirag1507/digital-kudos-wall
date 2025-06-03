@@ -1,0 +1,95 @@
+name: Update Pipeline Status Dashboard
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: '*/30 * * * *' # Runs every 30 minutes
+  push:
+    branches:
+      - main # Or your default branch
+    paths:
+      - 'state/**' # Trigger if files in the state/ directory change
+
+permissions:
+  contents: write # Required to push changes to the dashboard file
+
+jobs:
+  update_dashboard_job:
+    name: Update Pipeline Status Markdown File
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install jq (for JSON processing)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Generate Dashboard Content
+        id: dashboard_content
+        run: |
+          set -e # Exit on error
+          DEPLOYED_VERSIONS_FILE="state/uat-deployed-versions.json"
+          LAST_TESTED_VERSIONS_FILE="state/uat-last-successfully-tested-versions.json"
+          DASHBOARD_FILE="docs/pipeline-status.md"
+
+          # Initialize with defaults
+          deployed_frontend_tag="*N/A*"
+          deployed_backend_tag="*N/A*"
+          tested_frontend_tag="*N/A*"
+          tested_backend_tag="*N/A*"
+
+          # Read deployed versions
+          if [ -f "$DEPLOYED_VERSIONS_FILE" ]; then
+            raw_deployed_frontend=$(jq -r '.frontend_image_uri_with_tag' "$DEPLOYED_VERSIONS_FILE")
+            raw_deployed_backend=$(jq -r '.backend_image_uri_with_tag' "$DEPLOYED_VERSIONS_FILE")
+            deployed_frontend_tag=${raw_deployed_frontend##*:}
+            deployed_backend_tag=${raw_deployed_backend##*:}
+            [ "$deployed_frontend_tag" == "null" ] || [ -z "$deployed_frontend_tag" ] && deployed_frontend_tag="*Error reading*"
+            [ "$deployed_backend_tag" == "null" ] || [ -z "$deployed_backend_tag" ] && deployed_backend_tag="*Error reading*"
+          fi
+
+          # Read last successfully tested versions
+          if [ -f "$LAST_TESTED_VERSIONS_FILE" ]; then
+            raw_tested_frontend=$(jq -r '.frontend_image_uri_with_tag' "$LAST_TESTED_VERSIONS_FILE")
+            raw_tested_backend=$(jq -r '.backend_image_uri_with_tag' "$LAST_TESTED_VERSIONS_FILE")
+            tested_frontend_tag=${raw_tested_frontend##*:}
+            tested_backend_tag=${raw_tested_backend##*:}
+            [ "$tested_frontend_tag" == "null" ] || [ -z "$tested_frontend_tag" ] && tested_frontend_tag="*Error reading*"
+            [ "$tested_backend_tag" == "null" ] || [ -z "$tested_backend_tag" ] && tested_backend_tag="*Error reading*"
+          fi
+
+          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          echo "Updating $DASHBOARD_FILE..."
+          # Use a heredoc to write the content to the dashboard file
+          cat <<EOF > "$DASHBOARD_FILE"
+# Pipeline Status
+
+This dashboard provides an overview of the component versions in different stages of the CI/CD pipeline.
+
+## UAT Environment
+
+| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |
+|-----------|-----------------------------------|---------------------------------------------|
+| Frontend  | ${deployed_frontend_tag}          | ${tested_frontend_tag}                       |
+| Backend   | ${deployed_backend_tag}           | ${tested_backend_tag}                        |
+
+*Last updated: ${timestamp}*
+EOF
+          echo "Dashboard file updated. Content:"
+          cat "$DASHBOARD_FILE"
+
+      - name: Commit and Push Dashboard Changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add docs/pipeline-status.md
+          if git diff --staged --quiet; then
+            echo "Dashboard is already up-to-date. No changes to commit."
+          else
+            git commit -m "Docs: Update pipeline status dashboard"
+            echo "Pushing dashboard updates..."
+            git push
+            echo "Dashboard push complete."
+          fi 
