@@ -63,16 +63,16 @@ jobs:
             cat docker-compose.yml
 
             echo "VERIFYING RESOLVED DOCKER-COMPOSE CONFIG ON EC2:"
-            sudo docker compose config
+            sudo docker-compose config
 
             echo "Stopping existing services (if any)..."
-            sudo docker compose down || echo "No services were running or error during down, proceeding."
+            sudo docker-compose down || echo "No services were running or error during down, proceeding."
 
             echo "Running docker-compose pull..."
-            sudo docker compose pull
+            sudo docker-compose pull
 
             echo "Running docker-compose up -d --force-recreate..."
-            sudo docker compose up -d --force-recreate frontend backend
+            sudo docker-compose up -d --force-recreate frontend backend
 
             echo "Listing running containers..."
             sudo docker ps -a
