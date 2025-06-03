@@ -75,16 +75,16 @@ jobs:
             cat docker-compose.yml
 
             echo "VERIFYING RESOLVED DOCKER-COMPOSE CONFIG ON EC2:"
-            sudo /usr/local/bin/docker-compose config
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose config
 
             echo "Stopping existing services (if any)..."
-            sudo /usr/local/bin/docker-compose down || echo "No services were running or error during down, proceeding."
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose down || echo "No services were running or error during down, proceeding."
 
             echo "Running docker-compose pull..."
-            sudo /usr/local/bin/docker-compose pull
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose pull
 
             echo "Running docker-compose up -d --force-recreate..."
-            sudo /usr/local/bin/docker-compose up -d --force-recreate frontend backend
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose up -d --force-recreate frontend backend
 
             echo "Listing running containers..."
             sudo docker ps -a
