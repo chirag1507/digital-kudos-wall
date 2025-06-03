@@ -61,6 +61,12 @@ jobs:
 
           timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
+          # Status Badges Markdown
+          FRONTEND_STATUS_BADGE_MD="[![Frontend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml)"
+          BACKEND_STATUS_BADGE_MD="[![Backend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml)"
+          RELEASE_UAT_STATUS_BADGE_MD="[![Release to UAT](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/release-uat.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/release-uat.yml)"
+          ACCEPTANCE_UAT_STATUS_BADGE_MD="[![UAT Acceptance Stage](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/acceptance-stage-uat.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/acceptance-stage-uat.yml)"
+
           echo "Updating $DASHBOARD_FILE..."
           # Use a group command with redirection to write content line by line
           {
@@ -70,10 +76,13 @@ jobs:
             echo ""
             echo "## UAT Environment"
             echo ""
-            echo "| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |"
-            echo "|-----------|-----------------------------------|---------------------------------------------|"
-            echo "| Frontend  | ${deployed_frontend_tag}          | ${tested_frontend_tag}                       |"
-            echo "| Backend   | ${deployed_backend_tag}           | ${tested_backend_tag}                        |"
+            echo "**UAT Release Status:** ${RELEASE_UAT_STATUS_BADGE_MD}"
+            echo "**UAT Acceptance Tests:** ${ACCEPTANCE_UAT_STATUS_BADGE_MD}"
+            echo ""
+            echo "| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version | Status                     |"
+            echo "|-----------|-----------------------------------|---------------------------------------------|----------------------------|"
+            echo "| Frontend  | ${deployed_frontend_tag}          | ${tested_frontend_tag}                       | ${FRONTEND_STATUS_BADGE_MD} |"
+            echo "| Backend   | ${deployed_backend_tag}           | ${tested_backend_tag}                        | ${BACKEND_STATUS_BADGE_MD}  |"
             echo ""
             echo "*Last updated: ${timestamp}*"
           } > "$DASHBOARD_FILE"
