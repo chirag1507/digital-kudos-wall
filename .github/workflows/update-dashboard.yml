@@ -3,12 +3,12 @@ name: Update Pipeline Status Dashboard
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-    - cron: '*/30 * * * *' # Runs every 30 minutes
+    - cron: "*/30 * * * *" # Runs every 30 minutes
   push:
     branches:
       - main # Or your default branch
     paths:
-      - 'state/**' # Trigger if files in the state/ directory change
+      - "state/**" # Trigger if files in the state/ directory change
 
 permissions:
   contents: write # Required to push changes to the dashboard file
@@ -62,21 +62,21 @@ jobs:
           timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           echo "Updating $DASHBOARD_FILE..."
-          # Use a heredoc to write the content to the dashboard file
-          cat <<EOF > "$DASHBOARD_FILE"
-# Pipeline Status
-
-This dashboard provides an overview of the component versions in different stages of the CI/CD pipeline.
-
-## UAT Environment
-
-| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |
-|-----------|-----------------------------------|---------------------------------------------|
-| Frontend  | ${deployed_frontend_tag}          | ${tested_frontend_tag}                       |
-| Backend   | ${deployed_backend_tag}           | ${tested_backend_tag}                        |
-
-*Last updated: ${timestamp}*
-EOF
+          # Use a group command with redirection to write content line by line
+          {
+            echo "# Pipeline Status"
+            echo ""
+            echo "This dashboard provides an overview of the component versions in different stages of the CI/CD pipeline."
+            echo ""
+            echo "## UAT Environment"
+            echo ""
+            echo "| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |"
+            echo "|-----------|-----------------------------------|---------------------------------------------|"
+            echo "| Frontend  | ${deployed_frontend_tag}          | ${tested_frontend_tag}                       |"
+            echo "| Backend   | ${deployed_backend_tag}           | ${tested_backend_tag}                        |"
+            echo ""
+            echo "*Last updated: ${timestamp}*"
+          } > "$DASHBOARD_FILE"
 
           echo "Dashboard file updated. Content:"
           cat "$DASHBOARD_FILE"
@@ -93,4 +93,4 @@ EOF
             echo "Pushing dashboard updates..."
             git push
             echo "Dashboard push complete."
-          fi 
+          fi
