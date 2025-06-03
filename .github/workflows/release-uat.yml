@@ -140,8 +140,9 @@ jobs:
       - name: Run Smoke Tests
         working-directory: ./digital-kudos-wall-system-tests
         env:
+          TEST_ENV: uat
           CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Custom env var for Playwright config
-          # APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
+          APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
           CI: true
         run: |
           echo "Running smoke tests against UAT..."
