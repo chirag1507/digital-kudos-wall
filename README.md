@@ -181,27 +181,40 @@ The goal is to implement the following stages:
     - Or, can be triggered manually for specific branches/versions.
     - **Deploy to UAT Environment (Release to UAT):**
       - GitHub Actions workflow retrieves the latest (or specified) Docker image URIs for frontend and backend.
-      - Triggers `terraform apply` in the `digital-kudos-wall-infrastructure` repository, passing the image URIs to update the EC2 instance's Docker Compose configuration via `user_data.sh`.
-    - Run smoke tests against the UAT environment.
-    - Run automated acceptance tests (e.g., end-to-end tests using the system-tests repository) against the UAT environment. (Note: Currently, acceptance tests are run on the UAT environment. A separate, dedicated acceptance environment/stage is a future consideration.)
+      - Connects to the UAT EC2 instance via SSH and uses `docker compose` with environment variables (populated from the `docker-compose.yml` template created by `user_data.sh`) to pull and run the specified image versions.
+    - Run smoke tests against the UAT environment to ensure basic system health post-deployment.
+    - Comprehensive automated acceptance tests are run by a separate, scheduled UAT Acceptance Stage (see below).
 
     ![Release Stage Diagram](./docs/images/release-stage.png "Release Stage Diagram (Deploy to UAT)")
 
-    ![Acceptance Testing](./docs/images/acceptance-stage.png "Acceptance Testing on UAT")
+3.  **UAT Acceptance Stage (Scheduled)**
 
-3.  **UAT Stage (Manual Verification)**
+    - This stage is automated by the `acceptance-stage-uat.yml` GitHub Actions workflow.
+    - **Trigger**: Runs automatically every 15 minutes and can also be triggered manually.
+    - **Process**:
+      - Checks if new application versions have been deployed to the UAT environment by comparing versions listed in `state/uat-deployed-versions.json` (updated by the "Release to UAT" stage) with `state/uat-last-successfully-tested-versions.json` (updated by this stage).
+      - If new versions are detected:
+        - Runs smoke tests against the UAT environment.
+        - If smoke tests pass, it proceeds to run the full suite of automated acceptance tests against UAT.
+      - If both smoke and acceptance tests pass, it updates `state/uat-last-successfully-tested-versions.json` with the successfully validated versions.
+      - This ensures that there's a continuous verification of the UAT environment's stability and correctness with the latest deployed code.
+    - **Concurrency**: Only one instance of this workflow will run at a time to prevent overlapping test executions.
 
-    - The UAT environment, once deployed (as per the Acceptance Stage), is available for manual QA testing and stakeholder review.
-    - Smoke tests ensure basic functionality post-deployment.
+    ![Scheduled UAT Acceptance Stage](./docs/images/acceptance-stage-acceptance-environment.png "Scheduled UAT Acceptance Stage")
+
+4.  **UAT Stage (Manual Verification)**
+
+    - The UAT environment, once deployed by the "Release to UAT" stage (which includes initial smoke tests), is continuously validated by the scheduled "UAT Acceptance Stage".
+    - It remains available for manual QA testing, stakeholder reviews, and user demonstrations.
 
     ![UAT Stage](./docs/images/uat-stage.png "UAT Stage")
 
-4.  **Staging Stage (Future - Pre-production Validation)**
+5.  **Staging Stage (Future - Pre-production Validation)**
 
     - Deploy to a staging environment (mimicking production).
     - Run smoke tests and potentially other checks (performance, final soak tests).
 
-5.  **Production Stage (Future - Live Deployment)**
+6.  **Production Stage (Future - Live Deployment)**
 
     - Deploy to the production environment.
     - Run smoke tests.
