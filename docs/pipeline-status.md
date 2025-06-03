@@ -4,9 +4,9 @@ This dashboard provides an overview of the component versions in different stage
 
 ## UAT Environment
 
-| Component | Deployed Version (on UAT) | Last Successfully Acceptance Tested Version |
-| --------- | ------------------------- | ------------------------------------------- |
-| Frontend  | _Waiting for data..._     | _Waiting for data..._                       |
-| Backend   | _Waiting for data..._     | _Waiting for data..._                       |
+| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |
+|-----------|-----------------------------------|---------------------------------------------|
+| Frontend  | e00b378ed2589be191826c94a53af87bcbdf1c05          | e00b378ed2589be191826c94a53af87bcbdf1c05                       |
+| Backend   | latest           | latest                        |
 
-_Last updated: [Timestamp]_
+*Last updated: 2025-06-03 10:20:32 UTC*
