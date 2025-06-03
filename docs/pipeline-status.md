@@ -4,9 +4,12 @@ This dashboard provides an overview of the component versions in different stage
 
 ## UAT Environment
 
-| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version |
-|-----------|-----------------------------------|---------------------------------------------|
-| Frontend  | e00b378ed2589be191826c94a53af87bcbdf1c05          | e00b378ed2589be191826c94a53af87bcbdf1c05                       |
-| Backend   | latest           | latest                        |
+**UAT Release Status:** [![Release to UAT](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/release-uat.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/release-uat.yml)
+**UAT Acceptance Tests:** [![UAT Acceptance Stage](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/acceptance-stage-uat.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall/actions/workflows/acceptance-stage-uat.yml)
 
-*Last updated: 2025-06-03 10:20:32 UTC*
+| Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version | Status                     |
+|-----------|-----------------------------------|---------------------------------------------|----------------------------|
+| Frontend  | e00b378ed2589be191826c94a53af87bcbdf1c05          | e00b378ed2589be191826c94a53af87bcbdf1c05                       | [![Frontend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml) |
+| Backend   | latest           | latest                        | [![Backend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml)  |
+
+*Last updated: 2025-06-03 10:38:12 UTC*
