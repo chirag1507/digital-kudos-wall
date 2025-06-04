@@ -12,4 +12,4 @@ This dashboard provides an overview of the component versions in different stage
 | Frontend  | e00b378ed2589be191826c94a53af87bcbdf1c05          | e00b378ed2589be191826c94a53af87bcbdf1c05                       | [![Frontend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml) |
 | Backend   | latest           | latest                        | [![Backend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml)  |
 
-*Last updated: 2025-06-04 11:17:21 UTC*
+*Last updated: 2025-06-04 11:39:30 UTC*
