@@ -138,6 +138,25 @@ jobs:
             sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose up -d --force-recreate frontend backend
             echo "Deployment script finished."
 
+            echo "Pausing for 10 seconds to allow services to stabilize..."
+            sleep 10
+
+            echo "Running smoke tests on UAT server..."
+            # Clone the system tests repo if it doesn't exist
+            if [ ! -d "digital-kudos-wall-system-tests" ]; then
+              git clone https://github/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git
+            fi
+            cd digital-kudos-wall-system-tests
+            npm ci
+            npx playwright install --with-deps
+            
+            # Run smoke tests connecting to services via localhost
+            TEST_ENV=uat \
+            CI_BASE_URL=http://localhost:3000 \
+            APP_BACKEND_URL=http://localhost:3001 \
+            CI=true \
+            npm run test:smoke
+
   record_deployment_and_state:
     name: Record Deployment and State
     runs-on: ubuntu-latest
@@ -249,6 +268,7 @@ jobs:
           echo "Playwright installation completed"
 
       - name: Run Smoke Tests
+        if: false # This step is now disabled and moved into the deploy job
         working-directory: ./digital-kudos-wall-system-tests
         env:
           TEST_ENV: uat
