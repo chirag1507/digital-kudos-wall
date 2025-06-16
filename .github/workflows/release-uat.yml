@@ -117,9 +117,6 @@ jobs:
           port: 22
           script: |
             echo "Deploying to UAT..."
-            export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
-            export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
-
             cd /opt/digital-kudos-wall
 
             echo "Writing explicit network docker-compose.yml..."
@@ -129,34 +126,22 @@ jobs:
               frontend:
                 image: \${FRONTEND_IMAGE_URI_WITH_TAG}
                 ports: ["3000:80"]
-                environment:
-                  - NODE_ENV=uat
-                  - REACT_APP_API_URL=http://backend:3001/api
                 restart: unless-stopped
                 depends_on: [backend]
                 networks: [kudos-net]
               backend:
                 image: \${BACKEND_IMAGE_URI_WITH_TAG}
                 ports: ["3001:3001"]
-                environment:
-                  - NODE_ENV=uat
-                  - PORT=3001
-                volumes: ["./data:/app/data"]
                 restart: unless-stopped
                 networks: [kudos-net]
-            volumes:
-              data:
             networks:
               kudos-net:
             EOF
 
-            echo "Stopping existing services (if any)..."
-            sudo /usr/local/bin/docker-compose down --remove-orphans || echo "No services were running or error during down, proceeding."
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose down --remove-orphans || echo "No services were running."
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose up -d --force-recreate
 
-            echo "Running docker-compose up -d --force-recreate..."
-            sudo /usr/local/bin/docker-compose up -d --force-recreate
             echo "Deployment script finished."
-
             echo "Pausing for 15 seconds to allow services to stabilize..."
             sleep 15
 
