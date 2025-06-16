@@ -136,25 +136,16 @@ jobs:
             sleep 15
 
             echo "Running smoke tests in a self-contained Docker container..."
-            # This command runs a diagnostic script and then the test suite inside a temporary container.
-            # It will first gather network information to debug DNS resolution issues before running the tests.
+            # This command runs the entire test suite inside a temporary container.
+            # It uses the full container names for service URLs to ensure robust DNS resolution.
             sudo docker run --rm \
               --network digital-kudos-wall_default \
               -e TEST_ENV=uat \
-              -e CI_BASE_URL=http://frontend \
-              -e APP_BACKEND_URL=http://backend:3001 \
+              -e CI_BASE_URL=http://digital-kudos-wall-frontend-1 \
+              -e APP_BACKEND_URL=http://digital-kudos-wall-backend-1:3001 \
               -e CI=true \
               mcr.microsoft.com/playwright:v1.44.0-jammy \
-              /bin/bash -c " \
-                echo '--- Running Network Diagnostics ---' && \
-                apt-get update >/dev/null && apt-get install -y git dnsutils >/dev/null && \
-                echo '--- /etc/hosts ---' && cat /etc/hosts && \
-                echo '--- /etc/resolv.conf ---' && cat /etc/resolv.conf && \
-                echo '--- nslookup backend ---' && nslookup backend && \
-                echo '--- nslookup frontend ---' && nslookup frontend && \
-                echo '--- Diagnostics Complete. Starting Tests ---' && \
-                git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && cd tests && npm ci && npm run test:smoke \
-              "
+              /bin/bash -c "git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && cd tests && npm ci && npm run test:smoke"
 
   record_deployment_and_state:
     name: Record Deployment and State
