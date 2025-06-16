@@ -4,11 +4,11 @@ on:
   workflow_dispatch: # Allows manual triggering
     inputs:
       frontend_image_tag:
-        description: "Frontend Docker image tag (e.g., latest, v1.0.0, or commit SHA)"
+        description: "Frontend Docker image tag (commit SHA or tag)"
         required: true
         default: "latest"
       backend_image_tag:
-        description: "Backend Docker image tag (e.g., latest, v1.0.0, or commit SHA)"
+        description: "Backend Docker image tag (commit SHA or tag)"
         required: true
         default: "latest"
       # Optional: Full image URIs if your registry/naming changes
@@ -20,15 +20,44 @@ on:
       #   required: false
 
 jobs:
+  check_can_deploy:
+    name: Check if services can be deployed to UAT
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - name: Install Pact CLI
+        run: |
+          wget -q https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v2.0.5/pact-2.0.5-linux-x86_64.tar.gz
+          tar xzf pact-2.0.5-linux-x86_64.tar.gz
+          echo "$PWD/pact/bin" >> $GITHUB_PATH
+
+      - name: Can I deploy frontend?
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        run: |
+          pact-broker can-i-deploy \
+            --pacticipant digital-kudos-wall-frontend \
+            --version ${{ github.event.inputs.frontend_version }} \
+            --to-environment uat
+
+      - name: Can I deploy backend?
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        run: |
+          pact-broker can-i-deploy \
+            --pacticipant digital-kudos-wall-backend \
+            --version ${{ github.event.inputs.backend_version }} \
+            --to-environment uat
+
   deploy_to_uat:
     name: Deploy to UAT Environment
     runs-on: ubuntu-latest
-    environment: uat # Optional: Define a GitHub environment for UAT for protection rules, etc.
+    needs: check_can_deploy
+    environment: uat
 
     steps:
-      - name: Checkout code (optional, for context)
-        uses: actions/checkout@v4
-
       - name: Set Image URIs with Tags
         id: image_uris
         run: |
@@ -42,7 +71,7 @@ jobs:
           echo "Deploying Backend: ${backend_uri_base}:${{ github.event.inputs.backend_image_tag }}"
 
       - name: Deploy to UAT EC2 via SSH
-        uses: appleboy/ssh-action@master # Or use v1.0.0 or a specific SHA for stability
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.UAT_SSH_HOST }}
           username: ${{ secrets.UAT_SSH_USER }}
@@ -52,10 +81,6 @@ jobs:
             echo "Deploying to UAT..."
             export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
             export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
-
-            echo "VERIFYING ENVIRONMENT VARIABLES ON EC2:"
-            echo "Frontend Image ENV VAR: $FRONTEND_IMAGE_URI_WITH_TAG"
-            echo "Backend Image ENV VAR: $BACKEND_IMAGE_URI_WITH_TAG"
 
             cd /opt/digital-kudos-wall
 
@@ -73,25 +98,57 @@ jobs:
 
             echo "Running docker-compose up -d --force-recreate..."
             sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose up -d --force-recreate frontend backend
-
-            echo "Listing running containers..."
-            sudo docker ps -a
-
-            echo "Checking frontend container logs (last 20 lines)..."
-            sudo docker logs digital-kudos-wall-frontend-1 --tail 20 || echo "Could not get frontend logs."
-
             echo "Deployment script finished."
 
-      - name: Record Deployed Versions
+  record_deployment_and_state:
+    name: Record Deployment and State
+    runs-on: ubuntu-latest
+    needs: deploy_to_uat
+    environment: uat
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Pact CLI
         run: |
-          echo "Recording deployed versions..."
-          # The main repository (digital-kudos-wall) is already checked out 
-          # by the 'Checkout code (optional, for context)' step at the beginning of this job.
+          wget -q https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v2.0.5/pact-2.0.5-linux-x86_64.tar.gz
+          tar xzf pact-2.0.5-linux-x86_64.tar.gz
+          echo "$PWD/pact/bin" >> $GITHUB_PATH
+
+      - name: Record frontend deployment to Pact Broker
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        run: |
+          pact-broker record-deployment \
+            --pacticipant digital-kudos-wall-frontend \
+            --version ${{ github.event.inputs.frontend_version }} \
+            --environment uat
+
+      - name: Record backend deployment to Pact Broker
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        run: |
+          pact-broker record-deployment \
+            --pacticipant digital-kudos-wall-backend \
+            --version ${{ github.event.inputs.backend_version }} \
+            --environment uat
+
+      - name: Record Deployed Versions for Acceptance Tests
+        run: |
+          echo "Recording deployed versions for acceptance tests..."
           mkdir -p state
+
+          frontend_uri_base='ghcr.io/chirag1507/digital-kudos-wall-frontend'
+          backend_uri_base='ghcr.io/chirag1507/digital-kudos-wall-backend'
+          frontend_img_with_tag="${frontend_uri_base}:${{ github.event.inputs.frontend_version }}"
+          backend_img_with_tag="${backend_uri_base}:${{ github.event.inputs.backend_version }}"
+
           cat <<EOF > state/uat-deployed-versions.json
           {
-            "frontend_image_uri_with_tag": "${{ env.FRONTEND_IMG }}",
-            "backend_image_uri_with_tag": "${{ env.BACKEND_IMG }}"
+            "frontend_image_uri_with_tag": "${frontend_img_with_tag}",
+            "backend_image_uri_with_tag": "${backend_img_with_tag}"
           }
           EOF
           echo "Content of state/uat-deployed-versions.json:"
@@ -105,29 +162,26 @@ jobs:
             echo "No changes to deployed versions file to commit."
           else
             git commit -m "CI: Record UAT deployed versions"
-            echo "Attempting to push changes to remote repository..."
             git push
-            echo "Push command executed."
           fi
 
   run_smoke_tests:
     name: Run Smoke Tests on UAT
     runs-on: ubuntu-latest
-    needs: deploy_to_uat # This job runs only if deploy_to_uat succeeds
-    if: always() # Or success() if you only want to run on successful deployment
+    needs: record_deployment_and_state
+    if: success()
 
     steps:
       - name: Checkout System Tests Repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/digital-kudos-wall-system-tests # Assumes it's under the same owner
+          repository: ${{ github.repository_owner }}/digital-kudos-wall-system-tests
           path: digital-kudos-wall-system-tests
-          # token: ${{ secrets.PAT_FOR_SYSTEM_TESTS_REPO }} # If the system tests repo is private and in a different org, or needs special access
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18" # Or your desired version
+          node-version: "18"
 
       - name: Install Playwright Browsers
         working-directory: ./digital-kudos-wall-system-tests
@@ -141,10 +195,9 @@ jobs:
         working-directory: ./digital-kudos-wall-system-tests
         env:
           TEST_ENV: uat
-          CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000 # Custom env var for Playwright config
-          APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001 # Keep if your tests need direct backend access
+          CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000
+          APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001
           CI: true
         run: |
           echo "Running smoke tests against UAT..."
-          echo "Target Frontend URL (from CI_BASE_URL): $CI_BASE_URL"
           npm run test:smoke
