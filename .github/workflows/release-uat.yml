@@ -38,7 +38,7 @@ jobs:
         run: |
           pact-broker can-i-deploy \
             --pacticipant digital-kudos-wall-frontend \
-            --version ${{ github.event.inputs.frontend_version }} \
+            --version ${{ github.event.inputs.frontend_image_tag }} \
             --to-environment uat
 
       - name: Can I deploy backend?
@@ -48,7 +48,7 @@ jobs:
         run: |
           pact-broker can-i-deploy \
             --pacticipant digital-kudos-wall-backend \
-            --version ${{ github.event.inputs.backend_version }} \
+            --version ${{ github.event.inputs.backend_image_tag }} \
             --to-environment uat
 
   deploy_to_uat:
@@ -122,7 +122,7 @@ jobs:
         run: |
           pact-broker record-deployment \
             --pacticipant digital-kudos-wall-frontend \
-            --version ${{ github.event.inputs.frontend_version }} \
+            --version ${{ github.event.inputs.frontend_image_tag }} \
             --environment uat
 
       - name: Record backend deployment to Pact Broker
@@ -132,7 +132,7 @@ jobs:
         run: |
           pact-broker record-deployment \
             --pacticipant digital-kudos-wall-backend \
-            --version ${{ github.event.inputs.backend_version }} \
+            --version ${{ github.event.inputs.backend_image_tag }} \
             --environment uat
 
       - name: Record Deployed Versions for Acceptance Tests
@@ -142,8 +142,8 @@ jobs:
 
           frontend_uri_base='ghcr.io/chirag1507/digital-kudos-wall-frontend'
           backend_uri_base='ghcr.io/chirag1507/digital-kudos-wall-backend'
-          frontend_img_with_tag="${frontend_uri_base}:${{ github.event.inputs.frontend_version }}"
-          backend_img_with_tag="${backend_uri_base}:${{ github.event.inputs.backend_version }}"
+          frontend_img_with_tag="${frontend_uri_base}:${{ github.event.inputs.frontend_image_tag }}"
+          backend_img_with_tag="${backend_uri_base}:${{ github.event.inputs.backend_image_tag }}"
 
           cat <<EOF > state/uat-deployed-versions.json
           {
