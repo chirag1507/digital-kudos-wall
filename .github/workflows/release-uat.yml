@@ -147,7 +147,7 @@ jobs:
               -e APP_BACKEND_URL=http://backend:3001 \
               -e CI=true \
               mcr.microsoft.com/playwright:v1.44.0-jammy \
-              /bin/bash -c "apt-get update && apt-get install -y git && git clone https://github/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git . && npm ci && npm run test:smoke"
+              /bin/bash -c "apt-get update >/dev/null && apt-get install -y git >/dev/null && git clone https://github/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && cd tests && npm ci && npm run test:smoke"
 
   record_deployment_and_state:
     name: Record Deployment and State
