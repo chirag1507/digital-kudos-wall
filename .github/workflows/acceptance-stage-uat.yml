@@ -102,6 +102,16 @@ jobs:
           echo "Frontend: $DEPLOYED_FRONTEND (was $LAST_TESTED_FRONTEND)"
           echo "Backend: $DEPLOYED_BACKEND (was $LAST_TESTED_BACKEND)"
 
+          # Run Backend Connectivity Diagnostics first
+          echo "Running backend connectivity diagnostics against UAT: $CI_BASE_URL"
+          echo "Backend URL: $APP_BACKEND_URL"
+          if ! npm run test:smoke --prefix ./system-tests-repo -- --grep "Backend Connectivity Diagnostics"; then
+            echo "Backend connectivity diagnostics FAILED - this will help identify the root cause"
+            echo "Proceeding with smoke tests anyway to gather more information..."
+          else
+            echo "Backend connectivity diagnostics PASSED."
+          fi
+
           # Run Smoke Tests first
           echo "Running smoke tests against UAT: $CI_BASE_URL"
           if ! npm run test:smoke --prefix ./system-tests-repo; then
