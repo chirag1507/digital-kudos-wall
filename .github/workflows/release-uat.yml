@@ -132,53 +132,22 @@ jobs:
             sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose up -d --force-recreate frontend backend
             echo "Deployment script finished."
 
-            echo "Pausing for 10 seconds to allow services to stabilize..."
-            sleep 10
+            echo "Pausing for 15 seconds to allow services to stabilize..."
+            sleep 15
 
-            echo "Running smoke tests on UAT server within a Docker container..."
-
-            # 1. Install git and clone/update the system tests repo
-            sudo apt-get update && sudo apt-get install -y git
-
-            if [ ! -d "digital-kudos-wall-system-tests" ]; then
-              git clone https://github/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git
-            else
-              cd digital-kudos-wall-system-tests
-              git pull --rebase
-              cd ..
-            fi
-
-            # 2. Create a docker-compose file for running the tests
-            cat <<EOF > docker-compose.test.yml
-            version: '3.8'
-            services:
-              smoke-tests:
-                image: mcr.microsoft.com/playwright:v1.44.0-jammy # Official Playwright image
-                working_dir: /app
-                volumes:
-                  - ./digital-kudos-wall-system-tests:/app
-                environment:
-                  - TEST_ENV=uat
-                  - CI_BASE_URL=http://frontend 
-                  - APP_BACKEND_URL=http://backend:3001
-                  - CI=true
-                command: >
-                  bash -c "npm ci && npm run test:smoke"
-                networks:
-                  - defaultnet
-            
-            networks:
-              defaultnet:
-                name: digital-kudos-wall_default # Name of the default network created by docker-compose
-                external: true
-            EOF
-
-            # 3. Run the smoke tests. This command starts the test container, which runs the tests and exits.
-            # The --exit-code-from flag ensures the command returns the test's exit code.
-            sudo /usr/local/bin/docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from smoke-tests
-
-            # 4. Clean up the test container
-            sudo /usr/local/bin/docker-compose -f docker-compose.test.yml down
+            echo "Running smoke tests in a self-contained Docker container..."
+            # This command runs the entire test suite inside a temporary container.
+            # It requires no dependencies (like git or npm) on the host UAT server, only Docker.
+            # It connects to the application's network to communicate with the frontend and backend.
+            # If the tests fail, this command will exit with a non-zero code, failing the deployment.
+            sudo docker run --rm \
+              --network digital-kudos-wall_default \
+              -e TEST_ENV=uat \
+              -e CI_BASE_URL=http://frontend \
+              -e APP_BACKEND_URL=http://backend:3001 \
+              -e CI=true \
+              mcr.microsoft.com/playwright:v1.44.0-jammy \
+              /bin/bash -c "apt-get update && apt-get install -y git && git clone https://github/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git . && npm ci && npm run test:smoke"
 
   record_deployment_and_state:
     name: Record Deployment and State
