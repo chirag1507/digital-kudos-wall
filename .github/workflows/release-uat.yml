@@ -235,13 +235,18 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Install Playwright Browsers
-        working-directory: ./digital-kudos-wall-system-tests
-        run: npx playwright install --with-deps
-
       - name: Install System Test Dependencies
         working-directory: ./digital-kudos-wall-system-tests
         run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ./digital-kudos-wall-system-tests
+        run: |
+          echo "Installing Playwright browsers..."
+          npx playwright install --with-deps
+          echo "Verifying browser installation..."
+          npx playwright install-deps
+          echo "Playwright installation completed"
 
       - name: Run Smoke Tests
         working-directory: ./digital-kudos-wall-system-tests
