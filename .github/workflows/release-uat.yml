@@ -137,11 +137,13 @@ jobs:
 
             echo "Running smoke tests in a self-contained Docker container..."
             # This command runs the entire test suite inside a temporary container.
-            # It requires no dependencies (like git or npm) on the host UAT server, only Docker.
-            # It connects to the application's network to communicate with the frontend and backend.
-            # If the tests fail, this command will exit with a non-zero code, failing the deployment.
+            # It requires no dependencies on the host server, only Docker.
+            # It connects to the application's network and explicitly links to the service containers
+            # to ensure robust name resolution, preventing ENOTFOUND errors.
             sudo docker run --rm \
               --network digital-kudos-wall_default \
+              --link digital-kudos-wall-backend-1:backend \
+              --link digital-kudos-wall-frontend-1:frontend \
               -e TEST_ENV=uat \
               -e CI_BASE_URL=http://frontend \
               -e APP_BACKEND_URL=http://backend:3001 \
