@@ -138,12 +138,21 @@ jobs:
               kudos-net:
             EOF
 
-            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose down --remove-orphans || echo "No services were running."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose up -d --force-recreate
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose --project-name digital-kudos-wall down --remove-orphans || echo "No services were running."
+            sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose --project-name digital-kudos-wall up -d --force-recreate
 
             echo "Deployment script finished."
             echo "Pausing for 15 seconds to allow services to stabilize..."
             sleep 15
+
+            echo "--- DIAGNOSTICS: Inspecting Docker state ---"
+            echo "Listing running containers (docker ps):"
+            sudo docker ps -a
+            echo "Listing Docker networks (docker network ls):"
+            sudo docker network ls
+            echo "Inspecting kudos-net network (docker network inspect):"
+            sudo docker network inspect digital-kudos-wall_kudos-net
+            echo "--- END DIAGNOSTICS ---"
 
             echo "Running smoke tests in a self-contained Docker container..."
             sudo docker run --rm \
