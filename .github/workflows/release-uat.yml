@@ -133,6 +133,9 @@ jobs:
                 image: \${BACKEND_IMAGE_URI_WITH_TAG}
                 ports: ["3001:3001"]
                 restart: unless-stopped
+                environment:
+                  - NODE_ENV=uat
+                  - PORT=3001
                 networks: [kudos-net]
             networks:
               kudos-net:
