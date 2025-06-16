@@ -122,29 +122,53 @@ jobs:
 
             cd /opt/digital-kudos-wall
 
-            echo "Stopping existing services (if any)..."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose down --remove-orphans || echo "No services were running or error during down, proceeding."
+            echo "Writing explicit network docker-compose.yml..."
+            cat <<EOF | sudo tee docker-compose.yml
+            version: '3.8'
+            services:
+              frontend:
+                image: \${FRONTEND_IMAGE_URI_WITH_TAG}
+                ports: ["3000:80"]
+                environment:
+                  - NODE_ENV=uat
+                  - REACT_APP_API_URL=http://backend:3001/api
+                restart: unless-stopped
+                depends_on: [backend]
+                networks: [kudos-net]
+              backend:
+                image: \${BACKEND_IMAGE_URI_WITH_TAG}
+                ports: ["3001:3001"]
+                environment:
+                  - NODE_ENV=uat
+                  - PORT=3001
+                volumes: ["./data:/app/data"]
+                restart: unless-stopped
+                networks: [kudos-net]
+            volumes:
+              data:
+            networks:
+              kudos-net:
+            EOF
 
-            echo "Running docker-compose pull..."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose pull
+            echo "Stopping existing services (if any)..."
+            sudo /usr/local/bin/docker-compose down --remove-orphans || echo "No services were running or error during down, proceeding."
 
             echo "Running docker-compose up -d --force-recreate..."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG="$FRONTEND_IMAGE_URI_WITH_TAG" BACKEND_IMAGE_URI_WITH_TAG="$BACKEND_IMAGE_URI_WITH_TAG" /usr/local/bin/docker-compose up -d --force-recreate frontend backend
+            sudo /usr/local/bin/docker-compose up -d --force-recreate
             echo "Deployment script finished."
 
             echo "Pausing for 15 seconds to allow services to stabilize..."
             sleep 15
 
-            echo "--- Running Network Reconnaissance ---"
-            echo "--- docker ps ---"
-            sudo docker ps --format \"table {{.ID}}  {{.Names}}  {{.Networks}}\"
-            
-            echo "--- docker network inspect digital-kudos-wall_default ---"
-            sudo docker network inspect digital-kudos-wall_default
-
-            # The test command is now disabled. We will re-enable it once we have the correct network data.
-            # echo "Running smoke tests in a self-contained Docker container..."
-            # sudo docker run --rm ...
+            echo "Running smoke tests in a self-contained Docker container..."
+            sudo docker run --rm \
+              --network digital-kudos-wall_kudos-net \
+              -e TEST_ENV=uat \
+              -e CI_BASE_URL=http://frontend \
+              -e APP_BACKEND_URL=http://backend:3001 \
+              -e CI=true \
+              mcr.microsoft.com/playwright:v1.44.0-jammy \
+              /bin/bash -c "git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && cd tests && npm ci && npm run test:smoke"
 
   record_deployment_and_state:
     name: Record Deployment and State
