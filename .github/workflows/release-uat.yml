@@ -200,13 +200,15 @@ jobs:
                   - NODE_ENV=uat
                   - PORT=3001
                   - DATABASE_URL=file:/app/prisma/uat.db
+                  - DEBUG=*
+                  - NODE_OPTIONS="--trace-warnings"
                 networks: [kudos-net]
                 healthcheck:
                   test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-                  interval: 5s
-                  timeout: 3s
+                  interval: 10s
+                  timeout: 5s
                   retries: 3
-                  start_period: 30s
+                  start_period: 45s
                 command: >
                   /bin/sh -c "
                     cd /app &&
@@ -217,7 +219,7 @@ jobs:
                     echo 'Generating Prisma client...' &&
                     su node -c 'npx prisma generate' &&
                     echo 'Starting application...' &&
-                    su node -c 'node dist/app.js'
+                    su node -c 'NODE_ENV=uat node --trace-warnings dist/app.js 2>&1 | tee /proc/1/fd/1'
                   "
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma:rw
