@@ -119,10 +119,34 @@ jobs:
             echo "Deploying to UAT..."
             cd /opt/digital-kudos-wall
 
-            # Create and set up the database directory with schema
+            # Create and set up the database directory with schema and migrations
             echo "Setting up database directory..."
-            sudo mkdir -p /opt/digital-kudos-wall/prisma
+            sudo mkdir -p /opt/digital-kudos-wall/prisma/migrations
             sudo touch /opt/digital-kudos-wall/prisma/uat.db
+
+            # Create initial migration
+            echo "Creating migration files..."
+            cat <<EOF | sudo tee /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
+            -- CreateTable
+            CREATE TABLE "User" (
+                "id" TEXT NOT NULL PRIMARY KEY,
+                "name" TEXT NOT NULL,
+                "email" TEXT NOT NULL,
+                "password" TEXT NOT NULL,
+                "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
+                "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" DATETIME NOT NULL
+            );
+
+            -- CreateIndex
+            CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+            EOF
+
+            # Create migration.lock
+            echo "Creating migration lock file..."
+            cat <<EOF | sudo tee /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
+            provider = "sqlite"
+            EOF
 
             # Create schema.prisma file
             echo "Creating Prisma schema..."
@@ -149,9 +173,11 @@ jobs:
 
             # Set proper permissions
             sudo chown -R 1000:1000 /opt/digital-kudos-wall/prisma
-            sudo chmod 755 /opt/digital-kudos-wall/prisma
+            sudo chmod -R 755 /opt/digital-kudos-wall/prisma
             sudo chmod 644 /opt/digital-kudos-wall/prisma/uat.db
             sudo chmod 644 /opt/digital-kudos-wall/prisma/schema.prisma
+            sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
+            sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
 
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
@@ -184,6 +210,9 @@ jobs:
                 command: >
                   /bin/sh -c "
                     cd /app &&
+                    echo 'Installing Prisma...' &&
+                    npm install prisma --save-dev &&
+                    npm install @prisma/client &&
                     echo 'Running database migrations...' &&
                     npx prisma migrate deploy &&
                     echo 'Generating Prisma client...' &&
