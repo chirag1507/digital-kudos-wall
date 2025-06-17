@@ -138,6 +138,7 @@ jobs:
                 environment:
                   - NODE_ENV=uat
                   - PORT=3001
+                  - DATABASE_URL=file:/app/prisma/uat.db
                 networks: [kudos-net]
                 healthcheck:
                   test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
@@ -145,8 +146,23 @@ jobs:
                   timeout: 3s
                   retries: 3
                   start_period: 10s
+                command: >
+                  /bin/sh -c "
+                    echo 'Setting up database...' &&
+                    touch /app/prisma/uat.db &&
+                    echo 'Running database migrations...' &&
+                    npx prisma migrate deploy &&
+                    echo 'Generating Prisma client...' &&
+                    npx prisma generate &&
+                    echo 'Starting application...' &&
+                    node /app/dist/app.js
+                  "
+                volumes:
+                  - uat_data:/app/prisma
             networks:
               kudos-net:
+            volumes:
+              uat_data:
             EOF
 
             sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose --project-name digital-kudos-wall down --remove-orphans || echo "No services were running."
