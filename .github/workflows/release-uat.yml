@@ -121,7 +121,7 @@ jobs:
 
             # Create and set up the database directory with schema and migrations
             echo "Setting up database directory..."
-            sudo mkdir -p /opt/digital-kudos-wall/prisma/migrations
+            sudo mkdir -p /opt/digital-kudos-wall/prisma/migrations/20250606090407_init
             sudo touch /opt/digital-kudos-wall/prisma/uat.db
 
             # Create initial migration
@@ -195,7 +195,7 @@ jobs:
                 image: \${BACKEND_IMAGE_URI_WITH_TAG}
                 ports: ["3001:3001"]
                 restart: unless-stopped
-                user: "1000:1000"
+                user: root
                 environment:
                   - NODE_ENV=uat
                   - PORT=3001
@@ -210,15 +210,14 @@ jobs:
                 command: >
                   /bin/sh -c "
                     cd /app &&
-                    echo 'Installing Prisma...' &&
-                    npm install prisma --save-dev &&
-                    npm install @prisma/client &&
+                    echo 'Setting up permissions...' &&
+                    chown -R node:node /app/node_modules &&
                     echo 'Running database migrations...' &&
-                    npx prisma migrate deploy &&
+                    su node -c 'npx prisma migrate deploy' &&
                     echo 'Generating Prisma client...' &&
-                    npx prisma generate &&
+                    su node -c 'npx prisma generate' &&
                     echo 'Starting application...' &&
-                    node dist/app.js
+                    su node -c 'node dist/app.js'
                   "
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma:rw
