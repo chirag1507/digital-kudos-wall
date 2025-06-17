@@ -119,6 +119,12 @@ jobs:
             echo "Deploying to UAT..."
             cd /opt/digital-kudos-wall
 
+            # Ensure prisma directory exists with correct permissions
+            echo "Setting up database directory..."
+            sudo mkdir -p /opt/digital-kudos-wall/prisma
+            sudo chown -R 1000:1000 /opt/digital-kudos-wall/prisma
+            sudo chmod 755 /opt/digital-kudos-wall/prisma
+
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
             version: '3.8'
@@ -149,7 +155,9 @@ jobs:
                 command: >
                   /bin/sh -c "
                     echo 'Setting up database...' &&
+                    mkdir -p /app/prisma &&
                     touch /app/prisma/uat.db &&
+                    chmod 644 /app/prisma/uat.db &&
                     echo 'Running database migrations...' &&
                     npx prisma migrate deploy &&
                     echo 'Generating Prisma client...' &&
@@ -158,11 +166,9 @@ jobs:
                     node /app/dist/app.js
                   "
                 volumes:
-                  - uat_data:/app/prisma
+                  - /opt/digital-kudos-wall/prisma:/app/prisma
             networks:
               kudos-net:
-            volumes:
-              uat_data:
             EOF
 
             sudo FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}" BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}" /usr/local/bin/docker-compose --project-name digital-kudos-wall down --remove-orphans || echo "No services were running."
