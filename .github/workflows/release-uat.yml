@@ -127,7 +127,9 @@ jobs:
                 image: \${FRONTEND_IMAGE_URI_WITH_TAG}
                 ports: ["3000:80"]
                 restart: unless-stopped
-                depends_on: [backend]
+                depends_on:
+                  backend:
+                    condition: service_healthy
                 networks: [kudos-net]
               backend:
                 image: \${BACKEND_IMAGE_URI_WITH_TAG}
@@ -137,6 +139,12 @@ jobs:
                   - NODE_ENV=uat
                   - PORT=3001
                 networks: [kudos-net]
+                healthcheck:
+                  test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+                  interval: 5s
+                  timeout: 3s
+                  retries: 3
+                  start_period: 10s
             networks:
               kudos-net:
             EOF
@@ -154,16 +162,64 @@ jobs:
             echo "Listing Docker networks (docker network ls):"
             sudo docker network ls
             echo "Inspecting kudos-net network (docker network inspect):"
-            sudo docker network inspect digital-kudos-wall_kudos-net
+            sudo docker network inspect digital-kudos-wall_kudos-net || true
             echo "--- END DIAGNOSTICS ---"
 
-            # Get the container IPs for service discovery
+            # Wait for backend to be healthy (up to 30 seconds)
+            echo "Waiting for backend to be healthy..."
+            COUNTER=0
+            while [ $COUNTER -lt 30 ]; do
+              BACKEND_STATUS=$(sudo docker inspect --format='{{.State.Status}}' digital-kudos-wall-backend-1 2>/dev/null || echo "not_found")
+              BACKEND_HEALTH=$(sudo docker inspect --format='{{.State.Health.Status}}' digital-kudos-wall-backend-1 2>/dev/null || echo "none")
+              
+              echo "Backend status: $BACKEND_STATUS, health: $BACKEND_HEALTH"
+              
+              if [ "$BACKEND_STATUS" = "running" ]; then
+                if [ "$BACKEND_HEALTH" = "none" ] || [ "$BACKEND_HEALTH" = "healthy" ]; then
+                  echo "Backend is running and healthy"
+                  break
+                fi
+              fi
+              
+              echo "Waiting for backend to be ready... (attempt $COUNTER/30)"
+              sleep 1
+              COUNTER=$((COUNTER + 1))
+            done
+
+            if [ $COUNTER -eq 30 ]; then
+              echo "Backend failed to become healthy within timeout"
+              echo "Backend logs:"
+              sudo docker logs digital-kudos-wall-backend-1
+              exit 1
+            fi
+
+            # Get container IPs with better error handling
             echo "Getting container IPs..."
-            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall_frontend_1)
-            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall_backend_1)
-            
+            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall-frontend-1 2>/dev/null || echo "")
+            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall-backend-1 2>/dev/null || echo "")
+
+            if [ -z "$FRONTEND_IP" ] || [ -z "$BACKEND_IP" ]; then
+              echo "Failed to get container IPs"
+              echo "Frontend IP: $FRONTEND_IP"
+              echo "Backend IP: $BACKEND_IP"
+              echo "Container status:"
+              sudo docker ps -a
+              exit 1
+            fi
+
             echo "Frontend container IP: $FRONTEND_IP"
             echo "Backend container IP: $BACKEND_IP"
+
+            # Test backend health endpoint directly
+            echo "Testing backend health endpoint..."
+            HEALTH_CHECK_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://${BACKEND_IP}:3001/health || echo "failed")
+            if [ "$HEALTH_CHECK_RESULT" != "200" ]; then
+              echo "Backend health check failed with status: $HEALTH_CHECK_RESULT"
+              echo "Backend logs:"
+              sudo docker logs digital-kudos-wall-backend-1
+              exit 1
+            fi
+            echo "Backend health check passed"
 
             echo "Running smoke tests in a self-contained Docker container..."
             sudo docker run --rm \
@@ -175,6 +231,7 @@ jobs:
               -e CI=true \
               mcr.microsoft.com/playwright:v1.44.0-jammy \
               /bin/bash -c "
+                set -e
                 echo 'Setting up test environment...' && \
                 git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && \
                 cd tests && \
