@@ -119,13 +119,39 @@ jobs:
             echo "Deploying to UAT..."
             cd /opt/digital-kudos-wall
 
-            # Create and set up the database file with proper permissions
-            echo "Setting up database file..."
+            # Create and set up the database directory with schema
+            echo "Setting up database directory..."
             sudo mkdir -p /opt/digital-kudos-wall/prisma
             sudo touch /opt/digital-kudos-wall/prisma/uat.db
+
+            # Create schema.prisma file
+            echo "Creating Prisma schema..."
+            cat <<EOF | sudo tee /opt/digital-kudos-wall/prisma/schema.prisma
+            generator client {
+              provider = "prisma-client-js"
+            }
+
+            datasource db {
+              provider = "sqlite"
+              url      = env("DATABASE_URL")
+            }
+
+            model User {
+              id        String   @id @default(cuid())
+              name      String
+              email     String   @unique
+              password  String
+              isEmailVerified Boolean @default(false)
+              createdAt DateTime @default(now())
+              updatedAt DateTime @updatedAt
+            }
+            EOF
+
+            # Set proper permissions
             sudo chown -R 1000:1000 /opt/digital-kudos-wall/prisma
             sudo chmod 755 /opt/digital-kudos-wall/prisma
             sudo chmod 644 /opt/digital-kudos-wall/prisma/uat.db
+            sudo chmod 644 /opt/digital-kudos-wall/prisma/schema.prisma
 
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
@@ -154,15 +180,16 @@ jobs:
                   interval: 5s
                   timeout: 3s
                   retries: 3
-                  start_period: 10s
+                  start_period: 30s
                 command: >
                   /bin/sh -c "
+                    cd /app &&
                     echo 'Running database migrations...' &&
                     npx prisma migrate deploy &&
                     echo 'Generating Prisma client...' &&
                     npx prisma generate &&
                     echo 'Starting application...' &&
-                    node /app/dist/app.js
+                    node dist/app.js
                   "
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma:rw
