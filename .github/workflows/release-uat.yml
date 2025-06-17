@@ -157,15 +157,33 @@ jobs:
             sudo docker network inspect digital-kudos-wall_kudos-net
             echo "--- END DIAGNOSTICS ---"
 
+            # Get the container IPs for service discovery
+            echo "Getting container IPs..."
+            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall_frontend_1)
+            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall_backend_1)
+            
+            echo "Frontend container IP: $FRONTEND_IP"
+            echo "Backend container IP: $BACKEND_IP"
+
             echo "Running smoke tests in a self-contained Docker container..."
             sudo docker run --rm \
               --network digital-kudos-wall_kudos-net \
               -e TEST_ENV=uat \
-              -e CI_BASE_URL=http://frontend \
-              -e APP_BACKEND_URL=http://backend:3001 \
+              -e CI_BASE_URL=http://${FRONTEND_IP} \
+              -e APP_BACKEND_URL=http://${BACKEND_IP}:3001 \
+              -e NODE_ENV=uat \
               -e CI=true \
               mcr.microsoft.com/playwright:v1.44.0-jammy \
-              /bin/bash -c "git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && cd tests && npm ci && npm run test:smoke"
+              /bin/bash -c "
+                echo 'Setting up test environment...' && \
+                git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && \
+                cd tests && \
+                npm ci && \
+                echo 'Running connectivity test...' && \
+                curl -v http://${BACKEND_IP}:3001/health && \
+                echo 'Running smoke tests...' && \
+                npm run test:smoke
+              "
 
   record_deployment_and_state:
     name: Record Deployment and State
