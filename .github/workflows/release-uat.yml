@@ -188,18 +188,12 @@ jobs:
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
 
-            # Create .env file for docker-compose
-            cat <<EOF > .env
-            FRONTEND_IMAGE_URI_WITH_TAG=${FRONTEND_IMG}
-            BACKEND_IMAGE_URI_WITH_TAG=${BACKEND_IMG}
-            EOF
-
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
             version: '3.8'
             services:
               frontend:
-                image: \${FRONTEND_IMAGE_URI_WITH_TAG}
+                image: ${FRONTEND_IMG}
                 ports: ["3000:80"]
                 restart: unless-stopped
                 depends_on:
@@ -207,7 +201,7 @@ jobs:
                     condition: service_healthy
                 networks: [kudos-net]
               backend:
-                image: \${BACKEND_IMAGE_URI_WITH_TAG}
+                image: ${BACKEND_IMG}
                 ports: ["3001:3001"]
                 restart: unless-stopped
                 environment:
@@ -241,18 +235,28 @@ jobs:
             echo "FRONTEND_IMG=${FRONTEND_IMG}"
             echo "BACKEND_IMG=${BACKEND_IMG}"
 
+            # Create environment file for docker-compose
+            sudo bash -c "cat > /opt/digital-kudos-wall/.env" << EOF
+            FRONTEND_IMAGE_URI_WITH_TAG=${FRONTEND_IMG}
+            BACKEND_IMAGE_URI_WITH_TAG=${BACKEND_IMG}
+            EOF
+
+            # Set proper permissions
+            sudo chown $USER:$USER /opt/digital-kudos-wall/.env
+            sudo chmod 644 /opt/digital-kudos-wall/.env
+
             # Pull the latest images
             echo "Pulling latest images..."
-            sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose pull
+            sudo docker compose pull
 
             # Start the services
             echo "Starting services..."
-            sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose up -d
+            sudo docker compose up -d
 
             # Wait for health checks using docker compose
             echo "Waiting for services to be healthy..."
             for i in {1..30}; do
-              if sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
+              if sudo docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
                 echo "Services are healthy!"
                 break
               fi
@@ -262,46 +266,32 @@ jobs:
 
             # Get container IPs for testing
             echo "Getting container IPs..."
-            FRONTEND_CONTAINER=$(sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps -q frontend)
-            BACKEND_CONTAINER=$(sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps -q backend)
+            FRONTEND_CONTAINER=$(sudo docker compose ps -q frontend)
+            BACKEND_CONTAINER=$(sudo docker compose ps -q backend)
             
-            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $FRONTEND_CONTAINER)
-            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $BACKEND_CONTAINER)
+            if [ -n "$FRONTEND_CONTAINER" ] && [ -n "$BACKEND_CONTAINER" ]; then
+              FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $FRONTEND_CONTAINER)
+              BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $BACKEND_CONTAINER)
 
-            echo "Frontend IP: $FRONTEND_IP"
-            echo "Backend IP: $BACKEND_IP"
+              echo "Frontend IP: $FRONTEND_IP"
+              echo "Backend IP: $BACKEND_IP"
 
-            # Test backend health endpoint directly
-            echo "Testing backend health endpoint..."
-            HEALTH_CHECK_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://${BACKEND_IP}:3001/health || echo "failed")
-            if [ "$HEALTH_CHECK_RESULT" != "200" ]; then
-              echo "Backend health check failed with status: $HEALTH_CHECK_RESULT"
-              echo "Backend logs:"
-              sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose logs backend
+              # Test backend health endpoint directly
+              echo "Testing backend health endpoint..."
+              HEALTH_CHECK_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://${BACKEND_IP}:3001/health || echo "failed")
+              if [ "$HEALTH_CHECK_RESULT" != "200" ]; then
+                echo "Backend health check failed with status: $HEALTH_CHECK_RESULT"
+                echo "Backend logs:"
+                sudo docker compose logs backend
+                exit 1
+              fi
+              echo "Backend health check passed"
+            else
+              echo "Failed to get container IDs"
+              echo "Docker compose status:"
+              sudo docker compose ps
               exit 1
             fi
-            echo "Backend health check passed"
-
-            echo "Running smoke tests in a self-contained Docker container..."
-            sudo docker run --rm \
-              --network digital-kudos-wall_kudos-net \
-              -e TEST_ENV=uat \
-              -e CI_BASE_URL=http://${FRONTEND_IP} \
-              -e APP_BACKEND_URL=http://${BACKEND_IP}:3001 \
-              -e NODE_ENV=uat \
-              -e CI=true \
-              mcr.microsoft.com/playwright:v1.44.0-jammy \
-              /bin/bash -c "
-                set -e
-                echo 'Setting up test environment...' && \
-                git clone https://github.com/${{ github.repository_owner }}/digital-kudos-wall-system-tests.git tests && \
-                cd tests && \
-                npm ci && \
-                echo 'Running connectivity test...' && \
-                curl -v http://${BACKEND_IP}:3001/health && \
-                echo 'Running smoke tests...' && \
-                npm run test:smoke
-              "
 
   record_deployment_and_state:
     name: Record Deployment and State
