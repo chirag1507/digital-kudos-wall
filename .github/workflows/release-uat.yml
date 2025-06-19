@@ -115,6 +115,7 @@ jobs:
           username: ${{ secrets.UAT_SSH_USER }}
           key: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
           port: 22
+          envs: FRONTEND_IMG,BACKEND_IMG
           script: |
             echo "Deploying to UAT..."
             cd /opt/digital-kudos-wall
@@ -187,6 +188,12 @@ jobs:
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
 
+            # Create .env file for docker-compose
+            cat <<EOF > .env
+            FRONTEND_IMAGE_URI_WITH_TAG=${FRONTEND_IMG}
+            BACKEND_IMAGE_URI_WITH_TAG=${BACKEND_IMG}
+            EOF
+
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
             version: '3.8'
@@ -229,22 +236,23 @@ jobs:
                 driver: bridge
             EOF
 
-            # Export environment variables for docker-compose
-            export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
-            export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
+            # Debug environment variables
+            echo "Debug: Environment variables"
+            echo "FRONTEND_IMG=${FRONTEND_IMG}"
+            echo "BACKEND_IMG=${BACKEND_IMG}"
 
             # Pull the latest images
             echo "Pulling latest images..."
-            sudo -E docker compose pull
+            sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose pull
 
             # Start the services
             echo "Starting services..."
-            sudo -E docker compose up -d
+            sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose up -d
 
             # Wait for health checks using docker compose
             echo "Waiting for services to be healthy..."
             for i in {1..30}; do
-              if sudo -E docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
+              if sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
                 echo "Services are healthy!"
                 break
               fi
@@ -254,8 +262,11 @@ jobs:
 
             # Get container IPs for testing
             echo "Getting container IPs..."
-            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(sudo docker compose ps -q frontend))
-            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(sudo docker compose ps -q backend))
+            FRONTEND_CONTAINER=$(sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps -q frontend)
+            BACKEND_CONTAINER=$(sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose ps -q backend)
+            
+            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $FRONTEND_CONTAINER)
+            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $BACKEND_CONTAINER)
 
             echo "Frontend IP: $FRONTEND_IP"
             echo "Backend IP: $BACKEND_IP"
@@ -266,7 +277,7 @@ jobs:
             if [ "$HEALTH_CHECK_RESULT" != "200" ]; then
               echo "Backend health check failed with status: $HEALTH_CHECK_RESULT"
               echo "Backend logs:"
-              sudo -E docker compose logs backend
+              sudo --preserve-env=FRONTEND_IMAGE_URI_WITH_TAG,BACKEND_IMAGE_URI_WITH_TAG docker compose logs backend
               exit 1
             fi
             echo "Backend health check passed"
