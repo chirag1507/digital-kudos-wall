@@ -119,6 +119,14 @@ jobs:
             echo "Deploying to UAT..."
             cd /opt/digital-kudos-wall
 
+            # Install Docker Compose plugin if not already installed
+            if ! docker compose version &> /dev/null; then
+              echo "Installing Docker Compose plugin..."
+              sudo mkdir -p /usr/libexec/docker/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+            fi
+
             # Create and set up the database directory with schema and migrations
             echo "Setting up database directory..."
             sudo mkdir -p /opt/digital-kudos-wall/prisma/migrations/20250606090407_init
@@ -212,8 +220,8 @@ jobs:
                 command: >
                   sh -c "
                     mkdir -p /app/prisma &&
-                    npx prisma migrate deploy 2>&1 &&
-                    node dist/index.js 2>&1
+                    npx prisma migrate deploy > /dev/null 2>&1 &&
+                    node dist/index.js
                   "
 
             networks:
@@ -221,27 +229,22 @@ jobs:
                 driver: bridge
             EOF
 
-            # Set proper permissions for the host directory
-            echo "Setting proper permissions for host directories..."
-            sudo chown -R 1000:1000 /opt/digital-kudos-wall/prisma
-            sudo chmod -R 755 /opt/digital-kudos-wall/prisma
-            sudo chmod 644 /opt/digital-kudos-wall/prisma/uat.db || true
-            sudo chmod 644 /opt/digital-kudos-wall/prisma/schema.prisma
-            sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
-            sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
+            # Export environment variables for docker-compose
+            export FRONTEND_IMAGE_URI_WITH_TAG="${{ env.FRONTEND_IMG }}"
+            export BACKEND_IMAGE_URI_WITH_TAG="${{ env.BACKEND_IMG }}"
 
             # Pull the latest images
             echo "Pulling latest images..."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG=${{ env.FRONTEND_IMG }} BACKEND_IMAGE_URI_WITH_TAG=${{ env.BACKEND_IMG }} docker compose pull
+            sudo -E docker compose pull
 
             # Start the services
             echo "Starting services..."
-            sudo FRONTEND_IMAGE_URI_WITH_TAG=${{ env.FRONTEND_IMG }} BACKEND_IMAGE_URI_WITH_TAG=${{ env.BACKEND_IMG }} docker compose up -d
+            sudo -E docker compose up -d
 
-            # Wait for health checks
+            # Wait for health checks using docker compose
             echo "Waiting for services to be healthy..."
             for i in {1..30}; do
-              if sudo docker compose ps | grep -q "healthy"; then
+              if sudo -E docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
                 echo "Services are healthy!"
                 break
               fi
@@ -249,63 +252,13 @@ jobs:
               sleep 10
             done
 
-            echo "Deployment script finished."
-            echo "Pausing for 15 seconds to allow services to stabilize..."
-            sleep 15
-
-            echo "--- DIAGNOSTICS: Inspecting Docker state ---"
-            echo "Listing running containers (docker ps):"
-            sudo docker ps -a
-            echo "Listing Docker networks (docker network ls):"
-            sudo docker network ls
-            echo "Inspecting kudos-net network (docker network inspect):"
-            sudo docker network inspect digital-kudos-wall_kudos-net || true
-            echo "--- END DIAGNOSTICS ---"
-
-            # Wait for backend to be healthy (up to 30 seconds)
-            echo "Waiting for backend to be healthy..."
-            COUNTER=0
-            while [ $COUNTER -lt 30 ]; do
-              BACKEND_STATUS=$(sudo docker inspect --format='{{.State.Status}}' digital-kudos-wall-backend-1 2>/dev/null || echo "not_found")
-              BACKEND_HEALTH=$(sudo docker inspect --format='{{.State.Health.Status}}' digital-kudos-wall-backend-1 2>/dev/null || echo "none")
-              
-              echo "Backend status: $BACKEND_STATUS, health: $BACKEND_HEALTH"
-              
-              if [ "$BACKEND_STATUS" = "running" ]; then
-                if [ "$BACKEND_HEALTH" = "none" ] || [ "$BACKEND_HEALTH" = "healthy" ]; then
-                  echo "Backend is running and healthy"
-                  break
-                fi
-              fi
-              
-              echo "Waiting for backend to be ready... (attempt $COUNTER/30)"
-              sleep 1
-              COUNTER=$((COUNTER + 1))
-            done
-
-            if [ $COUNTER -eq 30 ]; then
-              echo "Backend failed to become healthy within timeout"
-              echo "Backend logs:"
-              sudo docker logs digital-kudos-wall-backend-1
-              exit 1
-            fi
-
-            # Get container IPs with better error handling
+            # Get container IPs for testing
             echo "Getting container IPs..."
-            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall-frontend-1 2>/dev/null || echo "")
-            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' digital-kudos-wall-backend-1 2>/dev/null || echo "")
+            FRONTEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(sudo docker compose ps -q frontend))
+            BACKEND_IP=$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(sudo docker compose ps -q backend))
 
-            if [ -z "$FRONTEND_IP" ] || [ -z "$BACKEND_IP" ]; then
-              echo "Failed to get container IPs"
-              echo "Frontend IP: $FRONTEND_IP"
-              echo "Backend IP: $BACKEND_IP"
-              echo "Container status:"
-              sudo docker ps -a
-              exit 1
-            fi
-
-            echo "Frontend container IP: $FRONTEND_IP"
-            echo "Backend container IP: $BACKEND_IP"
+            echo "Frontend IP: $FRONTEND_IP"
+            echo "Backend IP: $BACKEND_IP"
 
             # Test backend health endpoint directly
             echo "Testing backend health endpoint..."
@@ -313,7 +266,7 @@ jobs:
             if [ "$HEALTH_CHECK_RESULT" != "200" ]; then
               echo "Backend health check failed with status: $HEALTH_CHECK_RESULT"
               echo "Backend logs:"
-              sudo docker logs digital-kudos-wall-backend-1
+              sudo -E docker compose logs backend
               exit 1
             fi
             echo "Backend health check passed"
