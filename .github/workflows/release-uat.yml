@@ -194,6 +194,9 @@ jobs:
             sudo chmod 755 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init
 
             echo "Writing explicit network docker-compose.yml..."
+            # Export the host as an environment variable
+            export HOST_ADDRESS=${{ secrets.UAT_SSH_HOST }}
+            
             cat <<EOF | sudo tee docker-compose.yml
             version: '3.8'
             services:
@@ -202,7 +205,7 @@ jobs:
                 ports: ["3000:80"]
                 restart: unless-stopped
                 environment:
-                  - BACKEND_URL=http://${UAT_SSH_HOST}:3001
+                  - BACKEND_URL=http://$HOST_ADDRESS:3001
                 depends_on:
                   backend:
                     condition: service_healthy
@@ -215,7 +218,7 @@ jobs:
                   - NODE_ENV=uat
                   - PORT=3001
                   - DATABASE_URL=file:/app/prisma/uat.db
-                  - FRONTEND_URL=http://${UAT_SSH_HOST}:3000
+                  - FRONTEND_URL=http://$HOST_ADDRESS:3000
                   - DEBUG=*
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma
@@ -259,9 +262,9 @@ jobs:
             echo "Debug: Environment variables"
             echo "FRONTEND_IMG=${FRONTEND_IMG}"
             echo "BACKEND_IMG=${BACKEND_IMG}"
-            echo "UAT_SSH_HOST=${UAT_SSH_HOST}"
-            echo "FRONTEND_URL=http://${UAT_SSH_HOST}:3000"
-            echo "BACKEND_URL=http://${UAT_SSH_HOST}:3001"
+            echo "HOST_ADDRESS=${HOST_ADDRESS}"
+            echo "FRONTEND_URL=http://${HOST_ADDRESS}:3000"
+            echo "BACKEND_URL=http://${HOST_ADDRESS}:3001"
 
             # Create environment file for docker-compose
             sudo bash -c "cat > /opt/digital-kudos-wall/.env" << EOF
