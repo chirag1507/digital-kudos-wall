@@ -196,6 +196,8 @@ jobs:
                 image: ${FRONTEND_IMG}
                 ports: ["3000:80"]
                 restart: unless-stopped
+                environment:
+                  - BACKEND_URL=http://${UAT_SSH_HOST}:3001
                 depends_on:
                   backend:
                     condition: service_healthy
@@ -208,6 +210,7 @@ jobs:
                   - NODE_ENV=uat
                   - PORT=3001
                   - DATABASE_URL=file:/app/prisma/uat.db
+                  - FRONTEND_URL=http://${UAT_SSH_HOST}:3000
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma
                 healthcheck:
