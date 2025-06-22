@@ -216,6 +216,7 @@ jobs:
                   - PORT=3001
                   - DATABASE_URL=file:/app/prisma/uat.db
                   - FRONTEND_URL=http://${UAT_SSH_HOST}:3000
+                  - DEBUG=*
                 volumes:
                   - /opt/digital-kudos-wall/prisma:/app/prisma
                 healthcheck:
@@ -229,11 +230,24 @@ jobs:
                 user: "1000:1000"
                 command: >
                   sh -c "
+                    set -x &&
                     mkdir -p /app/prisma &&
+                    ls -la /app/prisma &&
+                    echo 'Checking database file...' &&
+                    if [ ! -f /app/prisma/uat.db ]; then
+                      echo 'Database file does not exist, creating...' &&
+                      touch /app/prisma/uat.db &&
+                      chmod 666 /app/prisma/uat.db
+                    fi &&
+                    if [ ! -w /app/prisma/uat.db ]; then
+                      echo 'Database file is not writable!' &&
+                      ls -la /app/prisma/uat.db &&
+                      exit 1
+                    fi &&
                     echo 'Running database migrations...' &&
-                    npx prisma migrate deploy > /dev/null 2>&1 &&
-                    echo 'Starting application...' &&
-                    node dist/index.js
+                    npx prisma migrate deploy &&
+                    echo 'Starting application with debug logging...' &&
+                    NODE_DEBUG=* node dist/index.js 2>&1 | tee /app/prisma/backend.log
                   "
 
             networks:
@@ -297,6 +311,15 @@ jobs:
                 exit 1
               fi
               echo "Backend health check passed"
+
+              # Print recent logs for debugging
+              echo "Recent backend logs:"
+              sudo docker compose logs --tail 100 backend
+              echo "Database file permissions:"
+              sudo ls -la /opt/digital-kudos-wall/prisma/
+              echo "Database log file:"
+              sudo cat /opt/digital-kudos-wall/prisma/backend.log || echo "No log file found"
+
             else
               echo "Failed to get container IDs"
               echo "Docker compose status:"
