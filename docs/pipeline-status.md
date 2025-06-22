@@ -9,7 +9,7 @@ This dashboard provides an overview of the component versions in different stage
 
 | Component | Deployed Version (on UAT)         | Last Successfully Acceptance Tested Version | Status                     |
 |-----------|-----------------------------------|---------------------------------------------|----------------------------|
-| Frontend  | 1a5e77370e866d9d092241dfb11ecb5fa52be7e6          | 08da30cf120d2d1a91abfaad44b67f367a5a476e                       | [![Frontend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml) |
+| Frontend  | 4b3c74a802e84c30449e414f32044677a68bde77          | 08da30cf120d2d1a91abfaad44b67f367a5a476e                       | [![Frontend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-frontend/actions/workflows/commit-stage.yml) |
 | Backend   | 0df4feada3c49e7715f47e0cc635304f939ad27e           | latest                        | [![Backend Commit Stage](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml/badge.svg?branch=main)](https://github.com/chirag1507/digital-kudos-wall-backend/actions/workflows/commit-stage.yml)  |
 
-*Last updated: 2025-06-22 19:15:05 UTC*
+*Last updated: 2025-06-22 19:37:18 UTC*
