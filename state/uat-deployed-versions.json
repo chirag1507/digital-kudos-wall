@@ -1,4 +1,4 @@
 {
-  "frontend_image_uri_with_tag": "ghcr.io/chirag1507/digital-kudos-wall-frontend:1a5e77370e866d9d092241dfb11ecb5fa52be7e6",
+  "frontend_image_uri_with_tag": "ghcr.io/chirag1507/digital-kudos-wall-frontend:4b3c74a802e84c30449e414f32044677a68bde77",
   "backend_image_uri_with_tag": "ghcr.io/chirag1507/digital-kudos-wall-backend:0df4feada3c49e7715f47e0cc635304f939ad27e"
 }
