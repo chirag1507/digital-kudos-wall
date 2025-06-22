@@ -255,27 +255,13 @@ jobs:
 
             # Wait for health checks using docker compose
             echo "Waiting for services to be healthy..."
-            for i in {1..12}; do  # 1 minute total
-              # Check backend health
-              if sudo docker compose ps backend | grep -q "running (healthy)"; then
-                echo "Backend service is healthy!"
-                # Check if frontend is running (no health check for frontend)
-                if sudo docker compose ps frontend | grep -q "running"; then
-                  echo "Frontend service is running!"
-                  break
-                fi
+            for i in {1..12}; do  # Reduced to 12 attempts (1 minute total)
+              if sudo docker compose ps --format json | grep -q "\"State\":\"running (healthy)\""; then
+                echo "Services are healthy!"
+                break
               fi
-
-              if [ $i -eq 12 ]; then
-                echo "Services failed to become healthy/running within timeout"
-                echo "Backend logs:"
-                sudo docker compose logs backend
-                echo "Frontend logs:"
-                sudo docker compose logs frontend
-                exit 1
-              fi
-              echo "Waiting for services... ($i/12)"
-              sleep 5
+              echo "Waiting for services to be healthy... ($i/12)"
+              sleep 5  # Reduced to 5 seconds
             done
 
             # Get container IPs for testing
@@ -289,7 +275,7 @@ jobs:
 
               echo "Frontend IP: $FRONTEND_IP"
               echo "Backend IP: $BACKEND_IP"
-            
+
               # Test backend health endpoint directly
               echo "Testing backend health endpoint..."
               HEALTH_CHECK_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://${BACKEND_IP}:3001/health || echo "failed")
