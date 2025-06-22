@@ -260,6 +260,7 @@ jobs:
                 echo "Frontend and Backend services are healthy!"
                 break
               fi
+
               if [ $i -eq 12 ]; then
                 echo "Services failed to become healthy within timeout"
                 sudo docker compose logs
@@ -280,7 +281,7 @@ jobs:
 
               echo "Frontend IP: $FRONTEND_IP"
               echo "Backend IP: $BACKEND_IP"
-
+            
               # Test backend health endpoint directly
               echo "Testing backend health endpoint..."
               HEALTH_CHECK_RESULT=$(curl -s -o /dev/null -w "%{http_code}" http://${BACKEND_IP}:3001/health || echo "failed")
