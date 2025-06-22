@@ -180,13 +180,18 @@ jobs:
             }
             EOF
 
-            # Set proper permissions
+            # Set proper permissions - ensure both read and write access
+            echo "Setting proper permissions..."
             sudo chown -R 1000:1000 /opt/digital-kudos-wall/prisma
             sudo chmod -R 755 /opt/digital-kudos-wall/prisma
-            sudo chmod 644 /opt/digital-kudos-wall/prisma/uat.db
+            sudo chmod 666 /opt/digital-kudos-wall/prisma/uat.db
             sudo chmod 644 /opt/digital-kudos-wall/prisma/schema.prisma
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/migration_lock.toml
             sudo chmod 644 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init/migration.sql
+
+            # Ensure the directory is accessible
+            sudo chmod 755 /opt/digital-kudos-wall/prisma/migrations
+            sudo chmod 755 /opt/digital-kudos-wall/prisma/migrations/20250606090407_init
 
             echo "Writing explicit network docker-compose.yml..."
             cat <<EOF | sudo tee docker-compose.yml
@@ -221,10 +226,13 @@ jobs:
                   start_period: 45s
                 networks: [kudos-net]
                 init: true
+                user: "1000:1000"
                 command: >
                   sh -c "
                     mkdir -p /app/prisma &&
+                    echo 'Running database migrations...' &&
                     npx prisma migrate deploy > /dev/null 2>&1 &&
+                    echo 'Starting application...' &&
                     node dist/index.js
                   "
 
