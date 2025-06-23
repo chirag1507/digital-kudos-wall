@@ -53,6 +53,7 @@ jobs:
           TEST_ENV: uat
           CI_BASE_URL: http://${{ secrets.UAT_SSH_HOST }}:3000
           APP_BACKEND_URL: http://${{ secrets.UAT_SSH_HOST }}:3001
+          NODE_ENV: uat
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Default token is usually sufficient for pushes to the same repo by actions
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
