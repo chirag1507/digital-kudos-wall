@@ -88,7 +88,7 @@ digital-kudos-wall-system-tests/ # System tests repository
 
 - Backend Module: `digital-kudos-wall-backend/src/modules/user/`
 - Frontend Feature: `digital-kudos-wall-frontend/src/features/auth/`
-- System Tests: Registration module acceptance tests
+- System Tests: Registration module acceptance tests and smoke tests
 
 ## Standard Operating Procedures (SOPs)
 
@@ -105,3 +105,5 @@ The following SOPs must be referenced and followed:
 - `SOP-TestDataManagement-FE.md`
 - `SOP-ContractTests-FE.md`
 - `SOP-ComponentTests-FE.md`
+- `SOP-AcceptanceTests.md`
+- `SOP-SmokeTests.md`
