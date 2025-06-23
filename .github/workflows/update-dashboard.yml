@@ -53,10 +53,23 @@ jobs:
           if [ -f "$LAST_TESTED_VERSIONS_FILE" ]; then
             raw_tested_frontend=$(jq -r '.frontend_image_uri_with_tag' "$LAST_TESTED_VERSIONS_FILE")
             raw_tested_backend=$(jq -r '.backend_image_uri_with_tag' "$LAST_TESTED_VERSIONS_FILE")
-            tested_frontend_tag=${raw_tested_frontend##*:}
-            tested_backend_tag=${raw_tested_backend##*:}
-            [ "$tested_frontend_tag" == "null" ] || [ -z "$tested_frontend_tag" ] && tested_frontend_tag="*Error reading*"
-            [ "$tested_backend_tag" == "null" ] || [ -z "$tested_backend_tag" ] && tested_backend_tag="*Error reading*"
+            
+            # Extract version tags and handle edge cases
+            if [[ "$raw_tested_frontend" == *":"* ]]; then
+              tested_frontend_tag=${raw_tested_frontend##*:}
+            else
+              tested_frontend_tag="*N/A*"
+            fi
+            
+            if [[ "$raw_tested_backend" == *":"* ]]; then
+              tested_backend_tag=${raw_tested_backend##*:}
+            else
+              tested_backend_tag="*N/A*"
+            fi
+            
+            # Additional validation
+            [ "$tested_frontend_tag" == "null" ] || [ -z "$tested_frontend_tag" ] || [ "$tested_frontend_tag" == "latest" ] && tested_frontend_tag="*N/A*"
+            [ "$tested_backend_tag" == "null" ] || [ -z "$tested_backend_tag" ] || [ "$tested_backend_tag" == "latest" ] && tested_backend_tag="*N/A*"
           fi
 
           timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
