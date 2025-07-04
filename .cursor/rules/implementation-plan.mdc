@@ -1,13 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: false
----
----
 description: Enforce the mandatory implementation plan for every new story with strict step order and review gates.
-globs:
-  - "**/*"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Non-Negotiable Implementation Procedure
@@ -15,77 +8,84 @@ alwaysApply: true
 These steps **must** be followed in strict order for every new story:
 
 ## 0. Understand Feature via User Story Map
+
 - Refer to the user story map:  
   `digital-kudos-wall/docs/images/user-story-map.png`  
   Use this to fully understand feature scope before writing tests or code.
 
 ## 1. System Test Definition
+
 - Create Gherkin feature in `digital-kudos-wall-system-tests/src/acceptance/features/<story-name>.feature`
 - Implement DSL layer and models in `src/acceptance/dsl/...`
 - Use `digital-kudos-wall-system-tests/.cursor/rules/acceptance-test.mdc`
-- **Example Implementation**: 
-    1. Feature: `digital-kudos-wall-system-tests/src/acceptance/features/account_registration.feature`
-    2. DSL: `digital-kudos-wall-system-tests/src/acceptance/dsl/account_registration_dsl.ts`
-    3. Model: `digital-kudos-wall-system-tests/src/acceptance/dsl/models/registration.ts` 
+- **Example Implementation**:
+  1. Feature: `digital-kudos-wall-system-tests/src/acceptance/features/account_registration.feature`
+  2. DSL: `digital-kudos-wall-system-tests/src/acceptance/dsl/account_registration_dsl.ts`
+  3. Model: `digital-kudos-wall-system-tests/src/acceptance/dsl/models/registration.ts`
 - **Gate**: Feature file + DSL + Model must be approved before moving on
 
 ## 2. Backend Implementation
+
 - Add sociable unit tests as per `digital-kudos-wall-backend/.cursor/rules/sociable-unit-test.mdc`
 - Implement use case via Clean Architecture in `digital-kudos-wall-backend/src/modules/...`
 - Implement component and narrow integration tests as per rules `digital-kudos-wall-backend/.cursor/rules/narrow-integration-test.mdc` and `digital-kudos-wall-backend/.cursor/rules/component-test.mdc`
 - Use rules for Test Data Management and Test Doubles as per `digital-kudos-wall-backend/.cursor/rules/test-data-management.mdc` and `digital-kudos-wall-backend/.cursor/rules/test-doubles.mdc`
-- **Example Implementation**: 
-    1. Use Case: `digital-kudos-wall-backend/src/modules/user/application/use-cases/register-user/register-user.use-case.ts`
-    2. Sociable Unit Test: `digital-kudos-wall-backend/src/modules/user/application/use-cases/register-user/register-user.use-case.test.ts`
-    3. Domain Entities and Objects: `digital-kudos-wall-backend/src/modules/user/domain/...` 
-    4. Infrastructure Layer: `digital-kudos-wall-backend/src/modules/user/infrastructure/...` 
-    5. Narrow Integration Test: `digital-kudos-wall-backend/src/modules/user/infrastructure/persistence/prisma/__tests__/prisma-user.repository.integration.test.ts` 
-    6. Mappers: `digital-kudos-wall-backend/src/modules/user/infrastructure/persistence/prisma/mappers/user.mapper.ts` 
-    7. Presentation Layer: `digital-kudos-wall-backend/src/modules/user/presentation/...` 
-    8. Component Test: `digital-kudos-wall-backend/src/__tests__/register.component.test.ts` 
-    9. Component Test: `digital-kudos-wall-backend/src/__tests__/register.component.test.ts` 
-    10. Shared: Contains shared core, domain, infrastructure, presentation services and objects `digital-kudos-wall-backend/src/shared/...` 
+- **Example Implementation**:
+  1. Use Case: `digital-kudos-wall-backend/src/modules/user/application/use-cases/register-user/register-user.use-case.ts`
+  2. Sociable Unit Test: `digital-kudos-wall-backend/src/modules/user/application/use-cases/register-user/register-user.use-case.test.ts`
+  3. Domain Entities and Objects: `digital-kudos-wall-backend/src/modules/user/domain/...`
+  4. Infrastructure Layer: `digital-kudos-wall-backend/src/modules/user/infrastructure/...`
+  5. Narrow Integration Test: `digital-kudos-wall-backend/src/modules/user/infrastructure/persistence/prisma/__tests__/prisma-user.repository.integration.test.ts`
+  6. Mappers: `digital-kudos-wall-backend/src/modules/user/infrastructure/persistence/prisma/mappers/user.mapper.ts`
+  7. Presentation Layer: `digital-kudos-wall-backend/src/modules/user/presentation/...`
+  8. Component Test: `digital-kudos-wall-backend/src/__tests__/register.component.test.ts`
+  9. Component Test: `digital-kudos-wall-backend/src/__tests__/register.component.test.ts`
+  10. Shared: Contains shared core, domain, infrastructure, presentation services and objects `digital-kudos-wall-backend/src/shared/...`
 - **Gate**: Backend must be reviewed separately
 
 ## 3. Frontend Implementation
+
 - Follow Clean Architecture in frontend feature folder as per the rule `digital-kudos-wall-frontend/.cursor/rules/clean-architecture-fe.mdc`
 - Add data-testid attributes
 - Add sociable unit tests, component, and contract tests as per the rules `digital-kudos-wall-frontend/.cursor/rules/sociable-unit-test-fe.mdc`, `digital-kudos-wall-frontend/.cursor/rules/component-test-fe.mdc`, and `digital-kudos-wall-frontend/.cursor/rules/contract-test-fe.mdc`,
-- - Use rules for Test Data Management and Test Doubles as per `digital-kudos-wall-backend/.cursor/rules/test-data-management-fe.mdc` and `digital-kudos-wall-backend/.cursor/rules/test-doubles-fe.mdc` 
-- **Example Implementation**: 
-    1. Use Case: `digital-kudos-wall-frontend/src/features/auth/application/RegisterUserUseCase.ts`
-    2. Hooks: `digital-kudos-wall-frontend/src/features/auth/hooks/useRegistration.ts`
-    2. Sociable Unit Test: `digital-kudos-wall-frontend/src/features/auth/hooks/useRegistration.test.ts`
-    3. Component: `digital-kudos-wall-frontend/src/features/auth/components/RegistrationForm.tsx` 
-    5. Component Test: `digital-kudos-wall-frontend/src/features/auth/components/RegistrationForm.component.test.tsx` 
-    6. Interfaces: `digital-kudos-wall-frontend/src/features/auth/interfaces/AuthService.ts` and `digital-kudos-wall-frontend/src/features/auth/interfaces/UserRepository.ts`
-    6. Repositories: `digital-kudos-wall-frontend/src/features/auth/repositories/UserRepository.ts`
-    6. Contract Test: `digital-kudos-wall-frontend/src/features/auth/repositories/UserRepository.pact.test.ts`
-    6. Routes: `digital-kudos-wall-frontend/src/features/auth/routes/RegistrationPage.tsx`
-    4. Routes Component Test: `digital-kudos-wall-frontend/src/features/auth/routes/RegistrationPage.test.tsx`
-    5. Services: `digital-kudos-wall-frontend/src/features/auth/services/AuthServiceAdapter.ts` and `digital-kudos-wall-frontend/src/features/auth/services/UserRepository.ts`
-    6. Types: `digital-kudos-wall-frontend/src/features/auth/types/User.ts`
+- - Use rules for Test Data Management and Test Doubles as per `digital-kudos-wall-backend/.cursor/rules/test-data-management-fe.mdc` and `digital-kudos-wall-backend/.cursor/rules/test-doubles-fe.mdc`
+- **Example Implementation**:
+  1. Use Case: `digital-kudos-wall-frontend/src/features/auth/application/RegisterUserUseCase.ts`
+  2. Hooks: `digital-kudos-wall-frontend/src/features/auth/hooks/useRegistration.ts`
+  3. Sociable Unit Test: `digital-kudos-wall-frontend/src/features/auth/hooks/useRegistration.test.ts`
+  4. Component: `digital-kudos-wall-frontend/src/features/auth/components/RegistrationForm.tsx`
+  5. Component Test: `digital-kudos-wall-frontend/src/features/auth/components/RegistrationForm.component.test.tsx`
+  6. Interfaces: `digital-kudos-wall-frontend/src/features/auth/interfaces/AuthService.ts` and `digital-kudos-wall-frontend/src/features/auth/interfaces/UserRepository.ts`
+  7. Repositories: `digital-kudos-wall-frontend/src/features/auth/repositories/UserRepository.ts`
+  8. Contract Test: `digital-kudos-wall-frontend/src/features/auth/repositories/UserRepository.pact.test.ts`
+  9. Routes: `digital-kudos-wall-frontend/src/features/auth/routes/RegistrationPage.tsx`
+  10. Routes Component Test: `digital-kudos-wall-frontend/src/features/auth/routes/RegistrationPage.test.tsx`
+  11. Services: `digital-kudos-wall-frontend/src/features/auth/services/AuthServiceAdapter.ts` and `digital-kudos-wall-frontend/src/features/auth/services/UserRepository.ts`
+  12. Types: `digital-kudos-wall-frontend/src/features/auth/types/User.ts`
 - **Gate**: Frontend must be reviewed separately
 
 ## 4. Contract Testing
+
 - Implement provider contract verification tests in backend per `digital-kudos-wall-backend/.cursor/rules/provider-contract-test.mdc`
-- **Example Implementation**: 
-    1. Provider Contract Test: `digital-kudos-wall-backend/src/__tests__/contract/register.provider.contract.test.ts`
+- **Example Implementation**:
+  1. Provider Contract Test: `digital-kudos-wall-backend/src/__tests__/contract/register.provider.contract.test.ts`
 - **Gate**: Contract tests must be reviewed separately
 
 ## 5. System Test Implementation
+
 - Add step definitions, page objects, webdriver interactions
 - Use data-testid IDs
-- **Example Implementation**: 
-    1. Step Definitions: `digital-kudos-wall-system-tests/src/acceptance/step_definitions/account_registration.steps.ts`
-    2. Driver Interface: `digital-kudos-wall-system-tests/src/acceptance/drivers/account_registration_driver.interface.ts`
-    3. Web Driver Implementation: `digital-kudos-wall-system-tests/src/acceptance/drivers/web/account_registration_web_driver.ts`
-    4. Page Objects: `digital-kudos-wall-system-tests/src/acceptance/drivers/web/pages/account_registration.page.ts`
+- **Example Implementation**:
+  1. Step Definitions: `digital-kudos-wall-system-tests/src/acceptance/step_definitions/account_registration.steps.ts`
+  2. Driver Interface: `digital-kudos-wall-system-tests/src/acceptance/drivers/account_registration_driver.interface.ts`
+  3. Web Driver Implementation: `digital-kudos-wall-system-tests/src/acceptance/drivers/web/account_registration_web_driver.ts`
+  4. Page Objects: `digital-kudos-wall-system-tests/src/acceptance/drivers/web/pages/account_registration.page.ts`
 - **Gate**: System tests must pass review
 
 ---
 
 ## Critical Rules (Non-Negotiable)
+
 1. Complete & approve each step before starting the next
 2. Steps executed in exact order—no deviations
 3. Commit each step separately with gate confirmation
@@ -96,7 +96,9 @@ These steps **must** be followed in strict order for every new story:
 ---
 
 ## Rules
+
 Follow these Rules exactly:
+
 - `@SOP-SociableUnitTests.md`
 - `@SOP-ComponentTests.md`
 - `@SOP-NarrowIntegrationTests.md`
