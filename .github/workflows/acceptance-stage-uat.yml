@@ -155,7 +155,10 @@ jobs:
           else
             git commit -m "CI: Update UAT last successfully tested versions"
             echo "Attempting to push changes to remote repository..."
-            git push
+            # Pull latest changes with rebase strategy
+            git pull --rebase origin main
+            # Push our changes
+            git push origin main
             echo "Push command executed."
           fi
           cd ../ # Return to original working directory
